@@ -1,5 +1,12 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
+using namespace Microsoft.PowerShell.SecretManagement
+
+# The capture groups are:
+# 1. The ls short output (just the name & id)
+# 2. The name of the secret
+# 3. The username of the secret
+$lsLongOutput = "\d\d\d\d-\d\d-\d\d \d\d:\d\d ((.*) \[id: \d*\]) \[username: (.*)\]"
 
 function Invoke-lpass {
     [CmdletBinding()]
@@ -44,6 +51,14 @@ function Get-Secret
     $res = Invoke-lpass 'show','--name', $Name, '--password'
     if ([string]::IsNullOrWhiteSpace($res)) {
         $res = Invoke-lpass 'show', '--name', $Name, '--notes'
+    } else {
+        # We have a password, check for a username
+        $username = Invoke-lpass 'show', '--name', $Name, '--username'
+        if ($username) {
+            $res = [System.Management.Automation.PSCredential]::new(
+                $username,
+                (ConvertTo-SecureString $res -AsPlainText -Force))
+        }
     }
 
     return $res
@@ -134,15 +149,21 @@ function Get-SecretInfo
 
     $Filter = "*$Filter"
     $pattern = [WildcardPattern]::new($Filter)
-    Invoke-lpass 'ls' |
+    Invoke-lpass 'ls','-l' |
         Where-Object { 
-            $_ -match "(.*) \[id: \d*\]" | Out-Null
-            $pattern.IsMatch($Matches[1])
+            $_ -match $lsLongOutput | Out-Null
+            $pattern.IsMatch($Matches[2])
         } |
         ForEach-Object {
-            [Microsoft.PowerShell.SecretManagement.SecretInformation]::new(
-                $_,
-                [Microsoft.PowerShell.SecretManagement.SecretType]::SecureString,
+            $type = if ($Matches[3]) {
+                [SecretType]::PSCredential
+            } else {
+                [SecretType]::SecureString
+            }
+
+            [SecretInformation]::new(
+                $Matches[1],
+                $type,
                 $VaultName)
         }
 }

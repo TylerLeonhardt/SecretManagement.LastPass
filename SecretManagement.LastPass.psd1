@@ -9,7 +9,7 @@
 @{
 
     # Version number of this module.
-    ModuleVersion     = '0.0.1'
+    ModuleVersion     = '0.0.2'
 
     # ID used to uniquely identify this module
     GUID              = '3d07be57-4898-4c8a-82cd-dbe06ec67e48'
@@ -87,6 +87,10 @@
 
             # ReleaseNotes of this module
             ReleaseNotes = @'
+## 0.0.2
+
+Have accounts return as PSCredentials.
+
 ## 0.0.1
 
 Initial release.
