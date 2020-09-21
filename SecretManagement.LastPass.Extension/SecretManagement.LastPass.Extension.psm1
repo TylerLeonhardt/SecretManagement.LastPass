@@ -177,5 +177,5 @@ function Test-SecretVault
         [Parameter(ValueFromPipelineByPropertyName)]
         [hashtable] $AdditionalParameters
     )
-    return (Get-Command lpass -ErrorAction SilentlyContinue) -and (lpass status -match "Logged in as .*")
+    return (Get-Command lpass -ErrorAction SilentlyContinue) -and ((lpass status) -match "Logged in as .*")
 }
