@@ -54,16 +54,16 @@ you need to register the module as an extension:
 Register-SecretVault -ModuleName SecretManagement.LastPass
 ```
 
-if you need to specify a custom path, you can provide the full path `lpassPath` as a vault parameter.
+if you need to specify a custom path, you can provide the full path `lpassCommand` as a vault parameter.
 
 This also work if you need to launc lastpass through another command, such as WSL.
 
 ```
 # Custom path 
-Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{lpassPath = '/usr/bin/SomePath/lpass' }
+Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{lpassCommand = '/usr/bin/SomePath/lpass' }
 
 # WSL or other executable
-Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{lpassPath = 'wsl lpass' }
+Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{lpassCommand = 'wsl lpass' }
 ```
 
 Optionally, you can set it as the default vault by also providing the
