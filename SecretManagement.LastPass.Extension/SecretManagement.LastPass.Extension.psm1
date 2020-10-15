@@ -19,15 +19,24 @@ function Invoke-lpass {
         [object]
         $InputObject
     )
+    
+    if ($AdditionalParameters.wsl -and (Get-Command wsl -ErrorAction SilentlyContinue) -and 
+        (wsl lpass --version) -like 'LastPass CLI*') {
 
-    if (Get-Command lpass -ErrorAction SilentlyContinue) {
+        if ($InputObject) {
+            return $InputObject | & wsl lpass @Arguments
+        }
+        return wsl lpass @Arguments
+    }
+    elseif ((Get-Command lpass -ErrorAction SilentlyContinue )) {
         if ($InputObject) {
             return $InputObject | & lpass @Arguments
         }
         return lpass @Arguments
     }
-
-    throw "lpass executable not found or installed."
+    else {
+        throw "lpass executable not found or installed."
+    }
 }
 
 function Get-Secret
