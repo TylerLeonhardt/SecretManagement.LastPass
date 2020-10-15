@@ -52,9 +52,18 @@ you need to register the module as an extension:
 
 ```pwsh
 Register-SecretVault -ModuleName SecretManagement.LastPass
+```
 
-# If you are using the CLI through WSL
-Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{wsl = $true }
+if you need to specify a custom path, you can provide the full path `lpassPath` as a vault parameter.
+
+This also work if you need to launc lastpass through another command, such as WSL.
+
+```
+# Custom path 
+Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{lpassPath = '/usr/bin/SomePath/lpass' }
+
+# WSL or other executable
+Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{lpassPath = 'wsl lpass' }
 ```
 
 Optionally, you can set it as the default vault by also providing the
