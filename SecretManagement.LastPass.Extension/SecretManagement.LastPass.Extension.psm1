@@ -150,10 +150,7 @@ function Get-SecretInfo
     $Filter = "*$Filter"
     $pattern = [WildcardPattern]::new($Filter)
     Invoke-lpass 'ls','-l' |
-        Where-Object { 
-            $_ -match $lsLongOutput | Out-Null
-            $pattern.IsMatch($Matches[2])
-        } |
+        Where-Object { $_ -match $lsLongOutput -and $pattern.IsMatch($Matches[2])} |
         ForEach-Object {
             $type = if ($Matches[3]) {
                 [SecretType]::PSCredential
