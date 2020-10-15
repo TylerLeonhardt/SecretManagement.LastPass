@@ -52,6 +52,9 @@ you need to register the module as an extension:
 
 ```pwsh
 Register-SecretVault -ModuleName SecretManagement.LastPass
+
+# If you are using the CLI through WSL
+Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{wsl = $true }
 ```
 
 Optionally, you can set it as the default vault by also providing the
