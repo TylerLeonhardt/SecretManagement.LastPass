@@ -41,6 +41,7 @@ function Get-Secret
         [Parameter(ValueFromPipelineByPropertyName)]
         [hashtable] $AdditionalParameters
     )
+
     # TODO error handling
 
     if ($Name -match ".* \<id: (\d*)\>") {
@@ -76,7 +77,6 @@ function Set-Secret
         [Parameter(ValueFromPipelineByPropertyName)]
         [hashtable] $AdditionalParameters
     )
-
     if($Secret -is [string]) {
         $Secret = @{
             URL = "http://sn"
@@ -162,7 +162,7 @@ function Get-SecretInfo
             }
 
             [SecretInformation]::new(
-                    ($Matches[1] -replace '\[(id: \d*?)\]$', '<$1>'), 
+                ($Matches[1] -replace '\[(id: \d*?)\]$', '<$1>'), 
                 $type,
                 $VaultName)
         }
