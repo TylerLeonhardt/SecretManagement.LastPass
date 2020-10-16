@@ -30,10 +30,6 @@ function Invoke-lpass {
     throw "lpass executable not found or installed."
 }
 
-Function Select-MySecret([String]$Name, [Switch]$AsOutput) {
-    if ($AsOutput) { return $Name -replace '\[(id: \d*?)\]$', '<$1>' }
-    return $Name -replace '\<(id: \d*?)\>$', '[$1]' 
-}
 function Get-Secret
 {
     [CmdletBinding()]
@@ -45,10 +41,9 @@ function Get-Secret
         [Parameter(ValueFromPipelineByPropertyName)]
         [hashtable] $AdditionalParameters
     )
-    $Name = Select-MySecret -Name $Name
     # TODO error handling
 
-    if ($Name -match ".* \[id: (\d*)\]") {
+    if ($Name -match ".* \<id: (\d*)\>") {
         $Name = $Matches[1]
     }
 
@@ -81,7 +76,7 @@ function Set-Secret
         [Parameter(ValueFromPipelineByPropertyName)]
         [hashtable] $AdditionalParameters
     )
-    $Name = Select-MySecret -Name $Name
+
     if($Secret -is [string]) {
         $Secret = @{
             URL = "http://sn"
@@ -135,8 +130,8 @@ function Remove-Secret
         [Parameter(ValueFromPipelineByPropertyName)]
         [hashtable] $AdditionalParameters
     )
-    $Name = Select-MySecret -Name $Name
-    if ($Name -match ".* \[id: (\d*)\]") {
+
+    if ($Name -match ".* \<id: (\d*)\>") {
         $Name = $Matches[1]
     }
 
@@ -167,7 +162,7 @@ function Get-SecretInfo
             }
 
             [SecretInformation]::new(
-                    (Select-MySecret -Name $Matches[1] -AsOutput), 
+                    ($Matches[1] -replace '\[(id: \d*?)\]$', '<$1>'), 
                 $type,
                 $VaultName)
         }
