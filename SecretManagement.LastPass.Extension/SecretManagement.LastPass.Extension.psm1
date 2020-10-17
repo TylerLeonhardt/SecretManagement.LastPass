@@ -152,9 +152,9 @@ function Get-SecretInfo
     $pattern = [WildcardPattern]::new($Filter)
     Invoke-lpass 'ls','-l' |
         Where-Object { 
-            $IsMatch = $_ -match $lsLongOutput -and $pattern.IsMatch($Matches[2])
+            $IsMatch = $_ -match $lsLongOutput 
             if (-not $IsMatch ) { Write-Debug -Message "No match for: $_ `nThis record will be ignored." }
-            $IsMatch
+            $IsMatch -and $pattern.IsMatch($Matches[2])
         } |
         ForEach-Object {
             $type = if ($Matches[3]) {
