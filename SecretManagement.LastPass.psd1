@@ -9,7 +9,7 @@
 @{
 
     # Version number of this module.
-    ModuleVersion     = '0.0.2'
+    ModuleVersion     = '0.1.0'
 
     # ID used to uniquely identify this module
     GUID              = '3d07be57-4898-4c8a-82cd-dbe06ec67e48'
@@ -87,6 +87,14 @@
 
             # ReleaseNotes of this module
             ReleaseNotes = @'
+## 0.1.0
+
+Huge thanks to GitHub user @itfranck!
+
+* Change the output format of `Get-SecretInfo`
+* Handle shared folders better
+* Support specifying your own path for lpass (also used to support WSL)
+
 ## 0.0.2
 
 Have accounts return as PSCredentials.

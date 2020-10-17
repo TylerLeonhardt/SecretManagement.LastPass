@@ -11,7 +11,7 @@ to interact with LastPass.
 > **I work on it in my free time because I use LastPass personally.**
 > The dream is that one day this would move under the LastPass organization.
 
-# Prerequisites
+## Prerequisites
 
 * [PowerShell](https://github.com/PowerShell/PowerShell)
 * The [`lastpass-cli`](https://github.com/lastpass/lastpass-cli)
@@ -31,7 +31,7 @@ Using PowerShellGet v3:
 Install-PSResource Microsoft.PowerShell.SecretManagement -Prerelease
 ```
 
-# Installation
+## Installation
 
 You an install this module from the PowerShell Gallery:
 
@@ -47,6 +47,8 @@ Using PowerShellGet v3:
 Install-PSResource SecretManagement.LastPass
 ```
 
+## Registration
+
 Once you have it installed,
 you need to register the module as an extension:
 
@@ -54,24 +56,10 @@ you need to register the module as an extension:
 Register-SecretVault -ModuleName SecretManagement.LastPass
 ```
 
-### Vault parameters
-The module also have the following vault parameter, that can be provided at registration. 
-
-#### lpassCommand 
-If your lpass CLI is installed at a custom location or that you need to launch it using an alternate mean, such as WSL, this can be accomplished by providing the `lpassCommand`
-
-Example 
-```
-# Custom path 
-Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{lpassCommand = "& '/usr/bin/Some Path/lpass'" }
-
-# WSL 
-Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{lpassCommand = '& wsl lpass' }
-```
-
 Optionally, you can set it as the default vault by also providing the
 `-DefaultVault`
 parameter.
+
 
 At this point,
 you should be able to use
@@ -79,3 +67,37 @@ you should be able to use
 and all the rest of the
 `SecretManagement`
 commands!
+
+### Vault parameters
+
+The module also have the following vault parameter, that can be provided at registration.
+
+#### lpassCommand
+
+If your lpass CLI is installed at a custom location or that you need to launch it using an alternate mean, such as WSL, this can be accomplished by providing the `lpassCommand`
+
+##### Examples
+
+* Specifying a path
+
+```pwsh
+Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
+    lpassCommand = "/usr/bin/path/to/lpass"
+}
+```
+
+* Specifying a path with a space in it
+
+```pwsh
+Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
+    lpassCommand = "& '/usr/bin/Some Path With Spaces/lpass'"
+}
+```
+
+* Working with WSL
+
+```pwsh
+Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
+    lpassCommand = '& wsl lpass'
+}
+```
