@@ -46,7 +46,7 @@ function Get-Secret
 
     # TODO error handling
 
-    if ($Name -match ".* \[id: (\d*)\]") {
+    if ($Name -match ".* \(id: (\d*)\)") {
         $Name = $Matches[1]
     }
 
@@ -133,7 +133,7 @@ function Remove-Secret
         [hashtable] $AdditionalParameters
     )
 
-    if ($Name -match ".* \[id: (\d*)\]") {
+    if ($Name -match ".* \(id: (\d*)\)") {
         $Name = $Matches[1]
     }
 
@@ -166,7 +166,7 @@ function Get-SecretInfo
             }
 
             [SecretInformation]::new(
-                $Matches[1],
+                ($Matches[1] -replace '\[(id: \d*?)\]$', '($1)'), 
                 $type,
                 $VaultName)
         }
