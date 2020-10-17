@@ -143,6 +143,7 @@ function Remove-Secret
 
 function Get-SecretInfo
 {
+    [CmdletBinding()]
     param (
         [string] $Filter,
         [string] $VaultName,
@@ -153,8 +154,9 @@ function Get-SecretInfo
     $pattern = [WildcardPattern]::new($Filter)
     Invoke-lpass 'ls','-l' |
         Where-Object { 
-            $_ -match $lsLongOutput | Out-Null
-            $pattern.IsMatch($Matches[2])
+            $IsMatch = $_ -match $lsLongOutput 
+            if (-not $IsMatch ) { Write-Debug -Message "No match for: $_ `nThis record will be ignored." }
+            $IsMatch -and $pattern.IsMatch($Matches[2])
         } |
         ForEach-Object {
             $type = if ($Matches[3]) {
