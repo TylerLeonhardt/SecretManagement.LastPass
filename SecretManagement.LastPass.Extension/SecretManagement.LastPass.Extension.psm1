@@ -51,7 +51,6 @@ function Get-Secret
     }
 
     $res = Invoke-lpass 'show','--name', $Name, '--all'
-
     $Raw = ($res | Select-Object -Skip 1) -join "`n"
 
     if ($AdditionalParameters.outputType -eq 'Raw') {
@@ -75,8 +74,6 @@ function Get-Secret
         $Note = $raw.Substring($start)
     }
     $IsCustomType =  $AdditionalParameters.outputType -eq 'Detailed' -or $MyMatches.key.Contains('NoteType')
-
-
     If ($IsCustomType) {
         $Output = Get-ComplexSecret -Fields $MyMatches -Note $Note
     }
@@ -205,8 +202,6 @@ function Test-SecretVault
     return (Get-Command lpass -ErrorAction SilentlyContinue) -and ((lpass status) -match "Logged in as .*")
 }
 
-
-
 function Get-SimpleSecret {
     [CmdletBinding()]
     param (
@@ -239,7 +234,6 @@ function Get-ComplexSecret {
     
     if ($Dupes.count -gt 0) {
         $Dupesstr = ($dupes | ForEach-Object { $_.Group.key -join ',' }) -join "`n"
-
         
         Write-Error -Message @"
 The record contains multiple fields with the same name.
@@ -251,7 +245,6 @@ Secret will not be returned
         Write-Debug -Message 'Duplicates field name were detected. "" will be returned'
         return "" 
     }
-
 
     $Output = @{}
     if (![String]::IsNullOrEmpty($Note)) { 
