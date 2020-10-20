@@ -50,20 +50,41 @@ function Get-Secret
         $Name = $Matches[1]
     }
 
-    $res = Invoke-lpass 'show','--name', $Name, '--password'
-    if ([string]::IsNullOrWhiteSpace($res)) {
-        $res = Invoke-lpass 'show', '--name', $Name, '--notes'
-    } else {
-        # We have a password, check for a username
-        $username = Invoke-lpass 'show', '--name', $Name, '--username'
-        if ($username) {
-            $res = [System.Management.Automation.PSCredential]::new(
-                $username,
-                (ConvertTo-SecureString $res -AsPlainText -Force))
-        }
+    $res = Invoke-lpass 'show','--name', $Name, '--all'
+
+    $Raw = ($res | Select-Object -Skip 1) -join "`n"
+
+    if ($AdditionalParameters.outputType -eq 'Raw') {
+        return $Raw
     }
 
-    return $res
+    # Custom type cannot have the same case-sensitive name but Username / uSERname work.
+    # That's why we don't parse it directly to a hashtable.
+    $MyMatches = @([regex]::Matches($raw, '(?<key>.*?)\: (?<value>.*?)(?:\n|$)')  | ForEach-Object {
+        [PSCustomObject]@{
+            key        = $_.Groups.Item('key').value
+            value      = $_.Groups.Item('value').value 
+            valueIndex = $_.Groups.Item('value').index
+        }
+    })
+
+    # Notes is always the last item. This is also the only field that can be multiline.
+    $HasNote = $MyMatches[-1].key -ceq 'Notes' 
+    if ($HasNote) {
+        $start = $MyMatches[-1].valueIndex
+        $Note = $raw.Substring($start)
+    }
+    $IsCustomType =  $AdditionalParameters.outputType -eq 'Detailed' -or $MyMatches.key.Contains('NoteType')
+
+
+    If ($IsCustomType) {
+        $Output = Get-ComplexSecret -Fields $MyMatches -Note $Note
+    }
+    else {
+        $Output = Get-SimpleSecret -Fields $MyMatches -Note $Note
+    }
+    
+    return $Output
 }
 
 function Set-Secret
@@ -182,4 +203,70 @@ function Test-SecretVault
         [hashtable] $AdditionalParameters
     )
     return (Get-Command lpass -ErrorAction SilentlyContinue) -and ((lpass status) -match "Logged in as .*")
+}
+
+
+
+function Get-SimpleSecret {
+    [CmdletBinding()]
+    param (
+        $Fields,
+        $Note
+    )
+    
+    $IsCredentials = $Fields.where( { $_.key -in @('Username', 'Password') }, 'first').count -eq 1
+    if ($IsCredentials) {
+        $username = $Fields.Where( { $_.key -eq 'Username' }, 'first') | Select-Object -ExpandProperty value
+        if ($null -eq $username) { $username = '' }
+        $password = $Fields.Where( { $_.key -eq 'Password' }, 'first') | Select-Object -ExpandProperty value
+        if ($null -eq $password) { $password = '' }
+        if ("" -ne $password) { $password = $password | ConvertTo-SecureString -AsPlainText -Force }
+        $output = [System.Management.Automation.PSCredential]::new($username, $password)
+    }
+    else {
+        if ($null -eq $Note) { $output = "" } else { $output = $Note}
+    }
+    return $output
+}
+
+function Get-ComplexSecret {
+    [CmdletBinding()]
+    param (
+        $Fields,
+        $Note
+    )
+    $Dupes = ($Fields | Group-Object key).Where( { $_.Count -gt 1 })
+    
+    if ($Dupes.count -gt 0) {
+        $Dupesstr = ($dupes | ForEach-Object { $_.Group.key -join ',' }) -join "`n"
+
+        
+        Write-Error -Message @"
+The record contains multiple fields with the same name.
+$Dupesstr
+Please ensure your custom records have only one field with the same name or re-register your vault with outputType='Raw'  vault parameter to get the raw output
+Secret will not be returned
+"@
+
+        Write-Debug -Message 'Duplicates field name were detected. "" will be returned'
+        return "" 
+    }
+
+
+    $Output = @{}
+    if (![String]::IsNullOrEmpty($Note)) { 
+        $Output.Notes = $Note
+        $Fields = $Fields | Select-Object -SkipLast 1
+    }
+
+    Foreach ($f in $Fields) {
+        try {
+            $Output.Add($f.key, $f.value) 
+        }
+        catch {
+            Write-Warning "$($f.key) field was not added."
+        }
+    }
+   
+    return $Output
 }

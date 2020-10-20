@@ -101,3 +101,26 @@ Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
     lpassCommand = '& wsl lpass'
 }
 ```
+#### outputType
+##### Accepts: Default,Detailed,Raw
+```
+Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
+    outputType = 'Detailed'
+```
+###### Default
+By default, standard credentials will return a PSCredentia, notes will be returned as a string and custom notes (Bank account, credit card, custom secret types) will be returned as a hashtable. 
+
+###### Detailed
+You can modify the default behavior so that notes and credentials also return as a hashtable. This has the advantage of exposing the URL and Notes field of credentials and also provide additional consistency for the Notes field should you want to compate multiple credentials Notes field (Simple notes Notes will also be in the Notes key)
+
+###### Raw
+This options return the items as is, with all fields and value in a multiline string
+This is the only mode that support duplicate fields name in custom type.
+```
+URL: https://www.google.ca
+Username: MyUser
+Password: MyPwd
+Notes: I am a note
+Notes is the only field that can be multiline and always the last field (if present).
+```
+
