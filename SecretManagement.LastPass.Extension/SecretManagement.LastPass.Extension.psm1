@@ -24,7 +24,7 @@ function Invoke-lpass {
    
     if ((Invoke-Expression -Command "$lpassCommand --version" ) -like 'LastPass CLI*') {
         if ($InputObject) {
-            return $InputObject | Invoke-Expression -Command "$lpassCommand @Arguments"
+            return  Invoke-Expression -Command "$InputObject $lpassCommand @Arguments"
         }
         return Invoke-Expression -Command "$lpassCommand @Arguments"
     }
