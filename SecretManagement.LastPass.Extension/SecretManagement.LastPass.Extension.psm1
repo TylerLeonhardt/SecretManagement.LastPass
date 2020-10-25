@@ -132,8 +132,9 @@ function Set-Secret
         $Keys = $Secret.Keys.Where({$_ -notin $SpecialKeys })
 
         foreach ($k in $Keys) {
-            if ($k -is [securestring]){
-                $k = $k | ConvertFrom-SecureString
+            if ($Secret.$k -is [securestring]) {
+                $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Secret.$k)
+                $Secret.$k = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
             }
             [Void]($sb.AppendLine("$($k): $($Secret.$k)"))
         }
@@ -141,7 +142,8 @@ function Set-Secret
         # Notes need to be on a new line
         if ($null -ne $Secret.Notes) {
             if ($Secret.Notes -is [securestring]) {
-                $Secret.Notes = $Secret.Notes | ConvertFrom-SecureString
+                $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Secret.Notes)
+                $Secret.Notes = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
             }
             [Void]($sb.AppendLine("Notes: `n$($Secret.Notes)"))
         }
@@ -158,7 +160,10 @@ function Set-Secret
             Write-Verbose "Adding new secret" 
             $NoteTypeArgs = @()
             if ($null -ne $Secret.NoteType) {
-                if ($Secret.NoteType -is [securestring]) {$Secret.NoteType = $Secret.NoteType | ConvertFrom-SecureString}
+                if ($Secret.NoteType -is [securestring]) { 
+                    $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Secret.NoteType)
+                    $Secret.NoteType = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+                }
                  $NoteTypeArgs = @("--note-type=$($Secret.NoteType.ToLower().replace(' ','-'))") 
             }
             $sb.ToString() | Invoke-lpass 'add', $Name, '--non-interactive', $NoteTypeArgs
