@@ -144,12 +144,12 @@ function Set-Secret
     try {
         $res = Invoke-lpass 'show', '--sync=now', '--name', $Name -ErrorAction SilentlyContinue
           $SecretExists = $null -ne $res 
-        Write-Verbose $SecretExists.ToString() -Verbose
+
         if ($SecretExists) {
-            Write-Verbose "Editing secret" -Verbose
+            Write-Verbose "Editing secret" 
             $sb.ToString() | Invoke-lpass 'edit', '--non-interactive', $Name
         } else {
-            Write-Verbose "Adding new secret" -Verbose
+            Write-Verbose "Adding new secret" 
             $NoteTypeArgs = @()
             if ($null -ne $Secret.NoteType) { $NoteTypeArgs = @("--note-type=$($Secret.NoteType.ToLower().replace(' ','-'))") }
             $sb.ToString() | Invoke-lpass 'add', $Name, '--non-interactive', $NoteTypeArgs
@@ -162,35 +162,6 @@ function Set-Secret
     }
     return $true
 
-    
-      
-    # if($Secret.UserName) {
-    #     $sb.Append("Username: ").AppendLine($Secret.UserName)
-    #     $sb.Append("login: ").AppendLine($Secret.UserName)
-    # }
-
-    # if($Secret.Password) {
-    #     $pass = $Secret.Password
-    #     if ($Secret -is [pscredential]) {
-    #         $pass = $Secret.GetNetworkCredential().password
-    #     } elseif ($pass -is [securestring]) {
-    #         $pass = $pass | ConvertFrom-SecureString
-    #     }
-
-    #     $sb.Append("Password: ").AppendLine($pass)
-    #     $sb.Append("password: ").AppendLine($pass)
-    #     $sb.Append("sudo_password: ").AppendLine($pass)
-    # }
-
-    # if($Secret.URL) {
-    #     $sb.Append("URL: ").AppendLine($Secret.URL)
-    # }
-
-    # if($Secret.Notes) {
-    #     $sb.AppendLine("Notes:").AppendLine($Secret.Notes)
-    # }
-
-   
 }
 
 function Remove-Secret
