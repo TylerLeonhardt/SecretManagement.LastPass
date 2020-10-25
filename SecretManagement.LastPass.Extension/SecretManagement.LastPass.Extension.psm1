@@ -26,14 +26,14 @@ function Invoke-lpass {
     
     if ($lpassCommand -ne '' -and ((& "$lpassCommand" $lpassPath --version ) -like 'LastPass CLI*') ) {
         if ($InputObject) {
-            $InputObject | & "$lpassCommand" $lpassPath @Arguments
+            return $InputObject | & "$lpassCommand" $lpassPath @Arguments
         }
         else {
             return   & "$lpassCommand" $lpassPath @Arguments
         }
     } elseif (Get-Command $lpassPath) {
         if ($InputObject) {
-            $InputObject | & $lpassPath @Arguments
+            return  $InputObject | & $lpassPath @Arguments
         }
         else {
             return   & $lpassCommand $lpassPath @Arguments
@@ -61,20 +61,46 @@ function Get-Secret
         $Name = $Matches[1]
     }
 
-    $res = Invoke-lpass 'show','--name', $Name, '--password'
-    if ([string]::IsNullOrWhiteSpace($res)) {
-        $res = Invoke-lpass 'show', '--name', $Name, '--notes'
-    } else {
-        # We have a password, check for a username
-        $username = Invoke-lpass 'show', '--name', $Name, '--username'
-        if ($username) {
-            $res = [System.Management.Automation.PSCredential]::new(
-                $username,
-                (ConvertTo-SecureString $res -AsPlainText -Force))
-        }
+    try {
+        $res = Invoke-lpass 'show', '--name', $Name, '--all'
     }
+    catch {
+        Write-Error $_
+        return 
+    }
+    
+    $Raw = ($res | Select-Object -Skip 1) -join "`n"
 
-    return $res
+    # Custom type cannot have the same case-sensitive name but Username / uSERname work.
+    # That's why we don't parse it directly to a hashtable.
+    $MyMatches = @([regex]::Matches($raw, '(?<key>.*?)\: (?<value>.*?)(?:\n|$)')  | ForEach-Object {
+            [PSCustomObject]@{
+                key        = $_.Groups.Item('key').value
+                value      = $_.Groups.Item('value').value 
+                valueIndex = $_.Groups.Item('value').index
+            }
+        })
+
+        if ([String]::IsNullOrEmpty($Raw)) {
+            Write-Error 'Unable to retrieve secret. Make sure you are logged in and try again.'
+            return ""
+        }
+
+    # Notes is always the last item. This is also the only field that can be multiline.
+    $HasNote = $MyMatches.key -ccontains 'Notes' 
+    if ($HasNote) {
+        $start = $MyMatches.Where({$_.Key -ceq 'Notes'},'Last')[0].valueIndex
+        $Note = $raw.Substring($start)
+    }
+    $IsCustomType = $AdditionalParameters.outputType -eq 'Detailed' -or $MyMatches.key.Contains('NoteType')
+    If ($IsCustomType) {
+        $Output = Get-ComplexSecret -Fields $MyMatches -Note $Note -Raw $Raw
+    }
+    else {
+        $Output = Get-SimpleSecret -Fields $MyMatches -Note $Note
+    }
+    
+    return $Output
 }
 
 function Set-Secret
@@ -90,46 +116,81 @@ function Set-Secret
         [Parameter(ValueFromPipelineByPropertyName)]
         [hashtable] $AdditionalParameters
     )
-    if($Secret -is [string]) {
-        $Secret = @{
-            URL = "http://sn"
-            Notes = $Secret
-        }
-    }
-
     $sb = [System.Text.StringBuilder]::new()
-    if($Secret.UserName) {
-        $sb.Append("Username: ").AppendLine($Secret.UserName)
-        $sb.Append("login: ").AppendLine($Secret.UserName)
+    
+    
+    if ($Secret -is [string]) {
+        $Secret = @{Notes = $Secret}
+    } elseif ($Secret -is [pscredential]) {
+        $Secret = @{Username = $Secret.Username; Password = $Secret.GetNetworkCredential().password}
     }
 
-    if($Secret.Password) {
-        $pass = $Secret.Password
-        if ($Secret -is [pscredential]) {
-            $pass = $Secret.GetNetworkCredential().password
-        } elseif ($pass -is [securestring]) {
-            $pass = $pass | ConvertFrom-SecureString
+
+    
+    if ($Secret -is [hashtable]){
+        $SpecialKeys = @('Language', 'NoteType', 'Notes')
+        $Keys = $Secret.Keys.Where({$_ -notin $SpecialKeys })
+
+        foreach ($k in $Keys) {
+            [Void]($sb.AppendLine("$($k): $($Secret.$k)"))
         }
 
-        $sb.Append("Password: ").AppendLine($pass)
-        $sb.Append("password: ").AppendLine($pass)
-        $sb.Append("sudo_password: ").AppendLine($pass)
-    }
-
-    if($Secret.URL) {
-        $sb.Append("URL: ").AppendLine($Secret.URL)
-    }
-
-    if($Secret.Notes) {
-        $sb.AppendLine("Notes:").AppendLine($Secret.Notes)
-    }
-
+        # Notes need to be on a new line
+        if ($null -ne $Secret.Notes) {
+            [Void]($sb.AppendLine("Notes: `n$($Secret.Notes)"))
+        }
+    } 
+    
     try {
-        $sb.ToString() | Invoke-lpass 'add', $Name, '--non-interactive'
-    } catch {
+        $res = Invoke-lpass 'show', '--sync=now', '--name', $Name -ErrorAction SilentlyContinue
+          $SecretExists = $null -ne $res 
+        Write-Verbose $SecretExists.ToString() -Verbose
+        if ($SecretExists) {
+            Write-Verbose "Editing secret" -Verbose
+            $sb.ToString() | Invoke-lpass 'edit', '--non-interactive', $Name
+        } else {
+            Write-Verbose "Adding new secret" -Verbose
+            $NoteTypeArgs = @()
+            if ($null -ne $Secret.NoteType) { $NoteTypeArgs = @("--note-type=$($Secret.NoteType.ToLower().replace(' ','-'))") }
+            $sb.ToString() | Invoke-lpass 'add', $Name, '--non-interactive', $NoteTypeArgs
+        }
+       
+    }
+    catch {
+        Write-Error $_
         return $false
     }
     return $true
+
+    
+      
+    # if($Secret.UserName) {
+    #     $sb.Append("Username: ").AppendLine($Secret.UserName)
+    #     $sb.Append("login: ").AppendLine($Secret.UserName)
+    # }
+
+    # if($Secret.Password) {
+    #     $pass = $Secret.Password
+    #     if ($Secret -is [pscredential]) {
+    #         $pass = $Secret.GetNetworkCredential().password
+    #     } elseif ($pass -is [securestring]) {
+    #         $pass = $pass | ConvertFrom-SecureString
+    #     }
+
+    #     $sb.Append("Password: ").AppendLine($pass)
+    #     $sb.Append("password: ").AppendLine($pass)
+    #     $sb.Append("sudo_password: ").AppendLine($pass)
+    # }
+
+    # if($Secret.URL) {
+    #     $sb.Append("URL: ").AppendLine($Secret.URL)
+    # }
+
+    # if($Secret.Notes) {
+    #     $sb.AppendLine("Notes:").AppendLine($Secret.Notes)
+    # }
+
+   
 }
 
 function Remove-Secret
@@ -170,11 +231,17 @@ function Get-SecretInfo
             $IsMatch -and $pattern.IsMatch($Matches[2])
         } |
         ForEach-Object {
-            $type = if ($Matches[3]) {
-                [SecretType]::PSCredential
+            if ($AdditionalParameters.outputType -eq 'Detailed') {
+                $type = [SecretType]::Hashtable
             } else {
-                [SecretType]::SecureString
+                $type = if ($Matches[3]) {
+                    [SecretType]::PSCredential
+                }
+                else {
+                    [SecretType]::Unknown
+                }
             }
+           
 
             [SecretInformation]::new(
                 ($Matches[1] -replace '\[(id: \d*?)\]$', '($1)'), 
@@ -194,4 +261,68 @@ function Test-SecretVault
     )
     $status = Invoke-lpass 'status' -ErrorAction SilentlyContinue
     return ($status -match "Logged in as .*")
+}
+
+function Get-SimpleSecret {
+    [CmdletBinding()]
+    param (
+        $Fields,
+        $Note
+    )
+    
+    $IsCredentials = $Fields.where( { $_.key -in @('Username', 'Password') }, 'first').count -eq 1
+    if ($IsCredentials) {
+        $username = $Fields.Where( { $_.key -eq 'Username' }, 'first') | Select-Object -ExpandProperty value
+        if ($null -eq $username) { $username = '' }
+        $password = $Fields.Where( { $_.key -eq 'Password' }, 'first') | Select-Object -ExpandProperty value
+        if ($null -eq $password) { $password = '' }
+        if ("" -ne $password) { $password = $password | ConvertTo-SecureString -AsPlainText -Force }
+        $output = [System.Management.Automation.PSCredential]::new($username, $password)
+    }
+    else {
+        if ($null -eq $Note) { $output = "" } else { $output = $Note }
+    }
+    return $output
+}
+
+function Get-ComplexSecret {
+    [CmdletBinding()]
+    param (
+        $Fields,
+        $Note,
+        $Raw
+    )
+    $Dupes = ($Fields | Group-Object key).Where( { $_.Count -gt 1 })
+    
+    if ($Dupes.count -gt 0) {
+        $Dupesstr = ($dupes | ForEach-Object { $_.Group.key -join ',' }) -join "`n"
+        
+        Write-Warning -Message @"
+The record contains multiple fields with the same name.
+$Dupesstr
+A Raw parameter will be added to the returned object with the raw object. Only the first field found with a duplicated name will be included in the parsed object.
+
+"@
+
+    }
+
+    $Output = @{}
+    if (![String]::IsNullOrEmpty($Note)) { 
+        $Output.Notes = $Note
+        $Fields = $Fields | Select-Object -SkipLast 1
+    }
+
+    # If there's duplicate, Raw become a reserved key that will contains the raw output
+    if ($Dupes.count -gt 0) {$Output.Add('Raw',$Raw)}
+
+    Foreach ($f in $Fields) {
+        try {
+            $Output.Add($f.key, $f.value) 
+        }
+        catch {
+            Write-Warning "$($f.key) field was not added."
+        }
+    }
+   
+    return $Output
 }
