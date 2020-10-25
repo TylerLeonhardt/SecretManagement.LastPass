@@ -132,11 +132,17 @@ function Set-Secret
         $Keys = $Secret.Keys.Where({$_ -notin $SpecialKeys })
 
         foreach ($k in $Keys) {
+            if ($k -is [securestring]){
+                $k = $k | ConvertFrom-SecureString
+            }
             [Void]($sb.AppendLine("$($k): $($Secret.$k)"))
         }
 
         # Notes need to be on a new line
         if ($null -ne $Secret.Notes) {
+            if ($Secret.Notes -is [securestring]) {
+                $Secret.Notes = $Secret.Notes | ConvertFrom-SecureString
+            }
             [Void]($sb.AppendLine("Notes: `n$($Secret.Notes)"))
         }
     } 
@@ -151,7 +157,10 @@ function Set-Secret
         } else {
             Write-Verbose "Adding new secret" 
             $NoteTypeArgs = @()
-            if ($null -ne $Secret.NoteType) { $NoteTypeArgs = @("--note-type=$($Secret.NoteType.ToLower().replace(' ','-'))") }
+            if ($null -ne $Secret.NoteType) {
+                if ($Secret.NoteType -is [securestring]) {$Secret.NoteType = $Secret.NoteType | ConvertFrom-SecureString}
+                 $NoteTypeArgs = @("--note-type=$($Secret.NoteType.ToLower().replace(' ','-'))") 
+            }
             $sb.ToString() | Invoke-lpass 'add', $Name, '--non-interactive', $NoteTypeArgs
         }
        
