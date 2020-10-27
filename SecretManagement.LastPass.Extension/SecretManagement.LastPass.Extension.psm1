@@ -24,7 +24,7 @@ function Invoke-lpass {
     $lpassPath = if ($null -ne $AdditionalParameters.lpassPath){"`"$($AdditionalParameters.lpassPath)`""} else {'lpass'}
    
     
-    if ($lpassCommand -ne '' -and ((& "$lpassCommand" "$lpassPath" --version ) -like 'LastPass CLI*') ) {
+    if ($lpassCommand -ne '' -and ((& "$lpassCommand" $lpassPath --version ) -like 'LastPass CLI*') ) {
         if ($InputObject) {
             $InputObject | & "$lpassCommand" $lpassPath @Arguments
         }
