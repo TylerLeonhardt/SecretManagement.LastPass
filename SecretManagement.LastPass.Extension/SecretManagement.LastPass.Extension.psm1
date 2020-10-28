@@ -20,13 +20,24 @@ function Invoke-lpass {
         $InputObject
     )
 
-    $lpassCommand = if ($null -ne $AdditionalParameters.lpassCommand){$AdditionalParameters.lpassCommand} else {'lpass'}
+    $lpassCommand = if ($null -ne $AdditionalParameters.lpassCommand){$AdditionalParameters.lpassCommand} else {''}
+    $lpassPath = if ($null -ne $AdditionalParameters.lpassPath){"`"$($AdditionalParameters.lpassPath)`""} else {'lpass'}
    
-    if ((Invoke-Expression -Command "$lpassCommand --version" ) -like 'LastPass CLI*') {
+    
+    if ($lpassCommand -ne '' -and ((& "$lpassCommand" $lpassPath --version ) -like 'LastPass CLI*') ) {
         if ($InputObject) {
-            return $InputObject | Invoke-Expression -Command "$lpassCommand @Arguments"
+            $InputObject | & "$lpassCommand" $lpassPath @Arguments
         }
-        return Invoke-Expression -Command "$lpassCommand @Arguments"
+        else {
+            return   & "$lpassCommand" $lpassPath @Arguments
+        }
+    } elseif (Get-Command $lpassPath) {
+        if ($InputObject) {
+            $InputObject | & $lpassPath @Arguments
+        }
+        else {
+            return   & $lpassCommand $lpassPath @Arguments
+        }
     }
     
     throw "lpass executable not found or installed."

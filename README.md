@@ -74,7 +74,23 @@ The module also have the following vault parameter, that can be provided at regi
 
 #### lpassCommand
 
-If your lpass CLI is installed at a custom location or that you need to launch it using an alternate mean, such as WSL, this can be accomplished by providing the `lpassCommand`
+This parameter allow the use of a custom command to be called before lpass (such as, but not limited to, wsl)
+
+##### Examples
+
+
+* Working with WSL
+
+```pwsh
+Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
+    lpassCommand = 'wsl'
+}
+```
+
+
+#### lpassPath
+
+This parameter will allow to provide a custom lpass path location for the CLI
 
 ##### Examples
 
@@ -82,22 +98,6 @@ If your lpass CLI is installed at a custom location or that you need to launch i
 
 ```pwsh
 Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
-    lpassCommand = "/usr/bin/path/to/lpass"
-}
-```
-
-* Specifying a path with a space in it
-
-```pwsh
-Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
-    lpassCommand = "& '/usr/bin/Some Path With Spaces/lpass'"
-}
-```
-
-* Working with WSL
-
-```pwsh
-Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
-    lpassCommand = '& wsl lpass'
+    lpassPath = "/usr/bin/some path/to/lpass"
 }
 ```
