@@ -148,7 +148,7 @@ function Remove-Secret
         $Name = $Matches[1]
     }
 
-    lpass rm $Name
+    Invoke-lpass 'rm', $Name
     return $?
 }
 
@@ -192,5 +192,6 @@ function Test-SecretVault
         [Parameter(ValueFromPipelineByPropertyName)]
         [hashtable] $AdditionalParameters
     )
-    return (Get-Command lpass -ErrorAction SilentlyContinue) -and ((lpass status) -match "Logged in as .*")
+    $status = Invoke-lpass 'status' -ErrorAction SilentlyContinue
+    return ($status -match "Logged in as .*")
 }
