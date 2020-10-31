@@ -26,17 +26,17 @@ function Invoke-lpass {
     
     if ($lpassCommand -ne '' -and ((& "$lpassCommand" $lpassPath --version ) -like 'LastPass CLI*') ) {
         if ($InputObject) {
-            return $InputObject | & "$lpassCommand" $lpassPath @Arguments 2>$null
+            return $InputObject | & "$lpassCommand" $lpassPath @Arguments 
         }
         else {
-            return   & "$lpassCommand" $lpassPath @Arguments 2>$null
+            return   & "$lpassCommand" $lpassPath @Arguments 
         }
     } elseif (Get-Command $lpassPath) {
         if ($InputObject) {
-            return  $InputObject | & $lpassPath @Arguments 2>$null
+            return  $InputObject | & $lpassPath @Arguments 
         }
         else {
-            return   & $lpassCommand $lpassPath @Arguments 2>$null
+            return   & $lpassCommand $lpassPath @Arguments 
         }
     }
     
