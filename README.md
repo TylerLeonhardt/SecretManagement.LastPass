@@ -113,4 +113,4 @@ Some limitations exist on this module, inherent to the CLI they are based on.
 
 **Custom credential types**
 - Custom notes can be read and edited but attempting to create a new item of a custom type will fail ([Open issue from 2016](https://github.com/lastpass/lastpass-cli/issues/190))
-- Custom notes  with duplicate field name will only return the first named field. Additionally, a **Raw** key will be added to the hashtable containing the original unprocessed note. 
+- Case-sensiive hashtables will be used if the fetched secret contain multiple time the same key name under different cases (eg: USERNAME,username)
