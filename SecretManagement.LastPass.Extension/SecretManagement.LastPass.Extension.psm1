@@ -280,25 +280,16 @@ function Get-ComplexSecret {
     $Dupes = ($Fields | Group-Object key).Where( { $_.Count -gt 1 })
     
     if ($Dupes.count -gt 0) {
-        $Dupesstr = ($dupes | ForEach-Object { $_.Group.key -join ',' }) -join "`n"
-        
-        Write-Warning -Message @"
-The record contains multiple fields with the same name.
-$Dupesstr
-A Raw parameter will be added to the returned object with the raw object. Only the first field found with a duplicated name will be included in the parsed object.
-
-"@
-
+        Write-Verbose 'Creating case-sensitve hashtable'
+        $Output = [hashtable]::new([System.StringComparer]::InvariantCulture)
+    } else {
+        $Output = @{}
     }
-
-    $Output = @{}
+    
     if (![String]::IsNullOrEmpty($Note)) { 
         $Output.Notes = $Note
         $Fields = $Fields | Select-Object -SkipLast 1
     }
-
-    # If there's duplicate, Raw become a reserved key that will contains the raw output
-    if ($Dupes.count -gt 0) {$Output.Add('Raw',$Raw)}
 
     Foreach ($f in $Fields) {
         try {
