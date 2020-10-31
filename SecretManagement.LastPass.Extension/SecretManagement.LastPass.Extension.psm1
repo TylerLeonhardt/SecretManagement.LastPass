@@ -26,17 +26,17 @@ function Invoke-lpass {
     
     if ($lpassCommand -ne '' -and ((& "$lpassCommand" $lpassPath --version ) -like 'LastPass CLI*') ) {
         if ($InputObject) {
-            return $InputObject | & "$lpassCommand" $lpassPath @Arguments
+            return $InputObject | & "$lpassCommand" $lpassPath @Arguments 2>$null
         }
         else {
-            return   & "$lpassCommand" $lpassPath @Arguments
+            return   & "$lpassCommand" $lpassPath @Arguments 2>$null
         }
     } elseif (Get-Command $lpassPath) {
         if ($InputObject) {
-            return  $InputObject | & $lpassPath @Arguments
+            return  $InputObject | & $lpassPath @Arguments 2>$null
         }
         else {
-            return   & $lpassCommand $lpassPath @Arguments
+            return   & $lpassCommand $lpassPath @Arguments 2>$null
         }
     }
     
@@ -82,8 +82,7 @@ function Get-Secret
         })
 
         if ([String]::IsNullOrEmpty($Raw)) {
-            Write-Error 'Unable to retrieve secret. Make sure you are logged in and try again.'
-            return ""
+            return $null # Error will be returned.
         }
 
     # Notes is always the last item. This is also the only field that can be multiline.
@@ -150,8 +149,8 @@ function Set-Secret
     } 
     
     try {
-        $res = Invoke-lpass 'show', '--sync=now', '--name', $Name -ErrorAction SilentlyContinue
-          $SecretExists = $null -ne $res 
+        $res = Invoke-lpass 'show', '--sync=now', '--name', $Name -ErrorAction Stop 
+        $SecretExists = $null -ne $res 
 
         if ($SecretExists) {
             Write-Verbose "Editing secret" 
