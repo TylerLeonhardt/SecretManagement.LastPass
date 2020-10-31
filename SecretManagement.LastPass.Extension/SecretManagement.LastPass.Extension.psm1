@@ -149,7 +149,7 @@ function Set-Secret
     } 
     
     try {
-        $res = Invoke-lpass 'show', '--sync=now', '--name', $Name -ErrorAction Stop 
+        $res = Invoke-lpass 'show', '--sync=now', '--name', $Name, '2>&1' -ErrorAction Stop 
         $SecretExists = $null -ne $res 
 
         if ($SecretExists) {
