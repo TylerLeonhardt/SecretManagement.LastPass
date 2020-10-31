@@ -90,6 +90,15 @@ function Get-Secret
 
     try {
         $res = Invoke-lpass 'show', '--name', $Name, '--all'
+        if ($null -eq $res) {
+            return 
+        }
+        if ($res[0] -eq 'Multiple matches found.') {
+            Write-Warning "Multiple matches found with the name $Name. `nThe first matching result will be returned."
+            $Id = [regex]::Match($res[1], '\[id: (.*)\]').Groups[1].value
+            $res = Invoke-lpass 'show', '--name', $Id, '--all'
+
+        }
     }
     catch {
         Write-Error $_
@@ -109,7 +118,7 @@ function Get-Secret
         })
 
         if ([String]::IsNullOrEmpty($Raw)) {
-            return $null # Error will be returned.
+            return ""
         }
 
     # Notes is always the last item. This is also the only field that can be multiline.
@@ -176,7 +185,7 @@ function Set-Secret
     } 
     
     try {
-        $res = Invoke-lpass 'show', '--sync=now', '--name', $Name, "2>$null" -ErrorAction Stop 
+        $res = Invoke-lpass 'show', '--sync=now', '--name', $Name, '2>null' -ErrorAction Stop 
         $SecretExists = $null -ne $res 
 
         if ($SecretExists) {
@@ -325,7 +334,7 @@ function Get-ComplexSecret {
             Write-Warning "$($f.key) field was not added."
         }
     }
-    if ($DefaultNoteTypeMap.ContainsKey($Output.NoteType)) {
+    if ($null -ne $Output.NoteType -and $DefaultNoteTypeMap.ContainsKey($Output.NoteType)) {
         $Output.NoteType = $DefaultNoteTypeMap.Item($Output.NoteType)
     }
     return $Output
