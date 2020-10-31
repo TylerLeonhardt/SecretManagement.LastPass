@@ -8,6 +8,33 @@ using namespace Microsoft.PowerShell.SecretManagement
 # 3. The username of the secret
 $lsLongOutput = "\d\d\d\d-\d\d-\d\d \d\d:\d\d ((.*) \[id: \d*\]) \[username: (.*)\]"
 
+    # Custom notes in lpass CLI are a bit of a mess.
+    # For default types
+    # Get operation will return the value
+    # Set operation will only accept the key
+    # This is to convert value obtained from Get when doing a Set. 
+$DefaultNoteTypeMap = @{
+    'Address'           = 'address'
+    # 'amex' = ''       # Possibly deprecated            
+    'Bank Account'      = 'bank'
+    'Credit Card'       = 'credit-card'
+    'Database'          = 'database'
+    "Driver's License"  = 'drivers-license'
+    'Email Account'     = 'email'
+    'Health Insurance'  = 'health-insurance'
+    'Instant Messenger' = 'im'
+    'Insurance'         = 'insurance'
+    #'mastercard' = ''  # Possibly deprecated
+    'Membership'        = 'membership'
+    'Passport'          = 'passport'
+    'Server'            = 'server'
+    'Software License'  = 'software-license'
+    'SSH Key'           = 'ssh-key'
+    'Social Security'   = 'ssn'
+    #'visa' = ''        # Possibly deprecated
+    'Wi-Fi Password'    = 'wifi'
+} 
+
 function Invoke-lpass {
     [CmdletBinding()]
     param (
@@ -163,7 +190,7 @@ function Set-Secret
                     $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Secret.NoteType)
                     $Secret.NoteType = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
                 }
-                 $NoteTypeArgs = @("--note-type=$($Secret.NoteType.ToLower().replace(' ','-'))") 
+                $NoteTypeArgs = @("--note-type=$($Secret.NoteType)")
             }
             $sb.ToString() | Invoke-lpass 'add', $Name, '--non-interactive', $NoteTypeArgs
         }
@@ -298,6 +325,8 @@ function Get-ComplexSecret {
             Write-Warning "$($f.key) field was not added."
         }
     }
-   
+    if ($DefaultNoteTypeMap.ContainsKey($Output.NoteType)) {
+        $Output.NoteType = $DefaultNoteTypeMap.Item($Output.NoteType)
+    }
     return $Output
 }
