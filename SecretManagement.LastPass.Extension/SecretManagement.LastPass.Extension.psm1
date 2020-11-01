@@ -124,7 +124,7 @@ function Get-Secret
     # Notes is always the last item. This is also the only field that can be multiline.
     $HasNote = $MyMatches.key -ccontains 'Notes' 
     if ($HasNote) {
-        $start = $MyMatches.Where({$_.Key -ceq 'Notes'},'Last')[0].valueIndex
+        $start = $MyMatches.Where({$_.Key -ceq 'Notes'},'First')[0].valueIndex
         $Note = $raw.Substring($start)
         $MyMatches = $MyMatches.Where({$_.ValueIndex -lt $start})
     }
