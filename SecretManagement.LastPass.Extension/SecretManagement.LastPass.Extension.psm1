@@ -156,7 +156,7 @@ function Set-Secret
     
     
     if ($Secret -is [string]) {
-        $Secret = @{Notes = $Secret}
+        $Secret = @{URL = ' http://sn';Notes = $Secret}
     } elseif ($Secret -is [pscredential]) {
         $Secret = @{Username = $Secret.Username; Password = $Secret.GetNetworkCredential().password}
     }
@@ -165,8 +165,12 @@ function Set-Secret
     
     if ($Secret -is [hashtable]){
         $SpecialKeys = @('Language', 'NoteType', 'Notes')
-        $Keys = $Secret.Keys.Where({$_ -notin $SpecialKeys })
 
+        if ($Secret.Keys.count -eq 1 -and $null -ne $Secret.Notes) {
+            $Secret.URL = 'http://sn'
+        }
+
+        $Keys = $Secret.Keys.Where({$_ -notin $SpecialKeys })
         foreach ($k in $Keys) {
             if ($Secret.$k -is [securestring]) {
                 $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Secret.$k)
