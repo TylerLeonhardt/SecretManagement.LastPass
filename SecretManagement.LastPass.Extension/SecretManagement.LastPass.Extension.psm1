@@ -107,6 +107,10 @@ function Get-Secret
     
     $Raw = ($res | Select-Object -Skip 1) -join "`n"
 
+    if ([String]::IsNullOrEmpty($Raw)) {
+        return ""
+    }
+
     # Custom type cannot have the same case-sensitive name but Username / uSERname work.
     # That's why we don't parse it directly to a hashtable.
     $MyMatches = @([regex]::Matches($raw, '(?<key>.*?)\: (?<value>.*?)(?:\n|$)')  | ForEach-Object {
@@ -117,19 +121,16 @@ function Get-Secret
             }
         })
 
-        if ([String]::IsNullOrEmpty($Raw)) {
-            return ""
-        }
-
     # Notes is always the last item. This is also the only field that can be multiline.
     $HasNote = $MyMatches.key -ccontains 'Notes' 
     if ($HasNote) {
         $start = $MyMatches.Where({$_.Key -ceq 'Notes'},'Last')[0].valueIndex
         $Note = $raw.Substring($start)
+        $MyMatches = $MyMatches.Where({$_.ValueIndex -lt $start})
     }
     $IsCustomType = $AdditionalParameters.outputType -eq 'Detailed' -or $MyMatches.key.Contains('NoteType')
     If ($IsCustomType) {
-        $Output = Get-ComplexSecret -Fields $MyMatches -Note $Note -Raw $Raw
+        $Output = Get-ComplexSecret -Fields $MyMatches -Note $Note 
     }
     else {
         $Output = Get-SimpleSecret -Fields $MyMatches -Note $Note
@@ -309,8 +310,7 @@ function Get-ComplexSecret {
     [CmdletBinding()]
     param (
         $Fields,
-        $Note,
-        $Raw
+        $Note
     )
     $Dupes = ($Fields | Group-Object key).Where( { $_.Count -gt 1 })
     
