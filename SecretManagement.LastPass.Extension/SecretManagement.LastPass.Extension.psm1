@@ -190,7 +190,7 @@ function Set-Secret
     } 
     
     try {
-        $res = Invoke-lpass 'show', '--sync=now', '--name', $Name, '2>null' -ErrorAction Stop 
+        $res = Invoke-lpass 'show', '--sync=now', '--name', $Name, '2>/dev/null' -ErrorAction Stop 
         $SecretExists = $null -ne $res 
 
         if ($SecretExists) {
@@ -207,6 +207,8 @@ function Set-Secret
                 $NoteTypeArgs = @("--note-type=$($Secret.NoteType)")
             }
             $sb.ToString() | Invoke-lpass 'add', $Name, '--non-interactive', $NoteTypeArgs
+            #Explicit sync so calling set again do not duplicate the secret (add --sync=now not fast enough)
+            Invoke-lpass 'sync' 
         }
        
     }
