@@ -55,14 +55,14 @@ function Invoke-lpass {
         if ($InputObject) {
             return $InputObject | & "$lpassCommand" $lpassPath @Arguments 
         }
-            return   & "$lpassCommand" $lpassPath @Arguments 
+        return   & "$lpassCommand" $lpassPath @Arguments 
      } elseif (Get-Command $lpassPath) {
         if ($InputObject) {
             return  $InputObject | & $lpassPath @Arguments 
         }
-            return   & $lpassCommand $lpassPath @Arguments 
+        return   & $lpassCommand $lpassPath @Arguments 
     }
-    
+
     throw "lpass executable not found or installed."
 }
 
