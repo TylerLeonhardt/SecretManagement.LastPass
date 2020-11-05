@@ -55,16 +55,12 @@ function Invoke-lpass {
         if ($InputObject) {
             return $InputObject | & "$lpassCommand" $lpassPath @Arguments 
         }
-        else {
             return   & "$lpassCommand" $lpassPath @Arguments 
-        }
-    } elseif (Get-Command $lpassPath) {
+     } elseif (Get-Command $lpassPath) {
         if ($InputObject) {
             return  $InputObject | & $lpassPath @Arguments 
         }
-        else {
             return   & $lpassCommand $lpassPath @Arguments 
-        }
     }
     
     throw "lpass executable not found or installed."
@@ -91,7 +87,8 @@ function Get-Secret
     try {
         $res = Invoke-lpass 'show', '--name', $Name, '--all'
         if ($null -eq $res) {
-            return 
+            # Returning nothing is not allowed. We leave error handling to SecretManagement
+            return #Will produce "Get-Secret : The secret $Name was not found." error.
         }
         if ($res[0] -eq 'Multiple matches found.') {
             Write-Warning "Multiple matches found with the name $Name. `nThe first matching result will be returned."
@@ -104,7 +101,7 @@ function Get-Secret
         Write-Error $_
         return 
     }
-    
+    #The first line contains the secret name and ID. We do not have any use for it.
     $Raw = ($res | Select-Object -Skip 1) -join "`n"
 
     if ([String]::IsNullOrEmpty($Raw)) {
@@ -258,17 +255,15 @@ function Get-SecretInfo
             $IsMatch -and $pattern.IsMatch($Matches[2])
         } |
         ForEach-Object {
-            if ($AdditionalParameters.outputType -eq 'Detailed') {
-                $type = [SecretType]::Hashtable
-            } else {
-                $type = if ($Matches[3]) {
-                    [SecretType]::PSCredential
-                }
-                else {
-                    [SecretType]::Unknown
-                }
+            $type = if ($AdditionalParameters.outputType -eq 'Detailed') {
+                [SecretType]::Hashtable
             }
-           
+            elseif ($Matches[3]) {
+                [SecretType]::PSCredential
+            }
+            else {
+                [SecretType]::Unknown
+            }
 
             [SecretInformation]::new(
                 ($Matches[1] -replace '\[(id: \d*?)\]$', '($1)'), 
@@ -328,6 +323,9 @@ function Get-ComplexSecret {
     }
     
     if (![String]::IsNullOrEmpty($Note)) { 
+        #The Notes field is ALWAYS the last field.
+        #It is also the only field that can be multiline.
+        #This is why we set the Notes to $Notes and ignore the last field when a Notes field exist.
         $Output.Notes = $Note
         $Fields = $Fields | Select-Object -SkipLast 1
     }
