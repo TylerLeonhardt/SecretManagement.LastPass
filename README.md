@@ -101,3 +101,16 @@ Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
     lpassPath = "/usr/bin/some path/to/lpass"
 }
 ```
+#### outputType
+(Accept: Default,Detailed) 
+
+By default, regular credentials are returned as string (for notes) and PSCredential (for credentials) 
+Setting this parameter to **Detailed** will always return a hashtable. Effectively, this mean that the URL / Notes parameter of the regular credential will be exposed. 
+
+### Limitations
+
+Some limitations exist on this module, inherent to the CLI they are based on. 
+
+**Custom credential types**
+- Custom notes can be read and edited but attempting to create a new item of a custom type will fail ([Open issue from 2016](https://github.com/lastpass/lastpass-cli/issues/190))
+- Case-sensiive hashtables will be used if the fetched secret contain multiple time the same key name under different cases (eg: USERNAME,username)
