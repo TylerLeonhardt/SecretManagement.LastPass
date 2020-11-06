@@ -201,7 +201,7 @@ function Set-Secret
                     $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Secret.NoteType)
                     $Secret.NoteType = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
                 }
-                $NoteTypeArgs = @("--note-type=$($Secret.NoteType)")
+                $NoteTypeArgs += "--note-type=$($Secret.NoteType)"
             }
             $sb.ToString() | Invoke-lpass 'add', $Name, '--non-interactive', $NoteTypeArgs
             #Explicit sync so calling set again do not duplicate the secret (add --sync=now not fast enough)
