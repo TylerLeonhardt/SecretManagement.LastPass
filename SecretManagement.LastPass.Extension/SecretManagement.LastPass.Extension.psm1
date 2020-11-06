@@ -292,19 +292,21 @@ function Get-SimpleSecret {
         $Note
     )
     
-    $IsCredentials = $Fields.where( { $_.key -in @('Username', 'Password') }, 'first').count -eq 1
-    if ($IsCredentials) {
-        $username = $Fields.Where( { $_.key -eq 'Username' }, 'first') | Select-Object -ExpandProperty value
+    $username = $Fields.Where( { $_.key -eq 'Username' }, 'first') | Select-Object -ExpandProperty value
+    $password = $Fields.Where( { $_.key -eq 'Password' }, 'first') | Select-Object -ExpandProperty value
+    # Credentials 
+    if ($username -or $password) {
         if ($null -eq $username) { $username = '' }
-        $password = $Fields.Where( { $_.key -eq 'Password' }, 'first') | Select-Object -ExpandProperty value
         if ($null -eq $password) { $password = '' }
         if ("" -ne $password) { $password = $password | ConvertTo-SecureString -AsPlainText -Force }
-        $output = [System.Management.Automation.PSCredential]::new($username, $password)
+        return [System.Management.Automation.PSCredential]::new($username, $password)
     }
-    else {
-        if ($null -eq $Note) { $output = "" } else { $output = $Note }
+    # Secure Note
+    if ($null -ne $Note) {
+        return $Note
     }
-    return $output
+    # Empty secret
+    return ''
 }
 
 function Get-ComplexSecret {
@@ -315,7 +317,7 @@ function Get-ComplexSecret {
     )
     $Dupes = ($Fields | Group-Object key).Where( { $_.Count -gt 1 })
     
-    if ($Dupes.count -gt 0) {
+    if ($Dupes.Count -gt 0) {
         Write-Verbose 'Creating case-sensitve hashtable'
         $Output = [hashtable]::new([System.StringComparer]::InvariantCulture)
     } else {
