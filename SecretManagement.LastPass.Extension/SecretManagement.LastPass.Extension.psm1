@@ -34,6 +34,10 @@ $DefaultNoteTypeMap = @{
     #'visa' = ''        # Possibly deprecated
     'Wi-Fi Password'    = 'wifi'
 } 
+# These fields need special consideration when working with secrets.
+# Language / NoteType are fields that are part of any custom notes and always appear last (before Notes)
+#Notes field can appear in any secrets and is always the last field. It is also the only multiline field.
+$SpecialKeys = @('Language', 'NoteType', 'Notes')
 
 function Invoke-lpass {
     [CmdletBinding()]
@@ -161,8 +165,6 @@ function Set-Secret
 
     
     if ($Secret -is [hashtable]){
-        $SpecialKeys = @('Language', 'NoteType', 'Notes')
-
         if ($Secret.Keys.count -eq 1 -and $null -ne $Secret.Notes) {
             $Secret.URL = 'http://sn'
         }
