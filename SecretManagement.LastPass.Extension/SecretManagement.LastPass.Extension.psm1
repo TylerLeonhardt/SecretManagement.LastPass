@@ -122,7 +122,9 @@ function Get-Secret
             }
         })
 
-    # Notes is always the last item. This is also the only field that can be multiline.
+    # Notes is always the last item (lpass wise). This is also the only field that can be multiline.
+    # Any matching items after the first "Notes" key need to be discarded as it is not an item,
+    # but rather just part of the notes.
     $HasNote = $MyMatches.key -ccontains 'Notes' 
     if ($HasNote) {
         $start = $MyMatches.Where({$_.Key -ceq 'Notes'},'First')[0].valueIndex
