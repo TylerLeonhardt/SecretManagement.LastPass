@@ -182,7 +182,7 @@ function Set-Secret
                 $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Secret.Notes)
                 $Secret.Notes = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
             }
-            [Void]($sb.AppendLine("Notes: `n$($Secret.Notes)"))
+            $sb.AppendLine("Notes: `n$($Secret.Notes)") | Out-Null
         }
     } 
     
