@@ -9,7 +9,7 @@
 @{
 
     # Version number of this module.
-    ModuleVersion     = '0.1.0'
+    ModuleVersion     = '0.2.0'
 
     # ID used to uniquely identify this module
     GUID              = '3d07be57-4898-4c8a-82cd-dbe06ec67e48'
@@ -87,6 +87,14 @@
 
             # ReleaseNotes of this module
             ReleaseNotes = @'
+## 0.2.0
+
+Huge thanks to GitHub user @itfranck! (again!)
+
+* Added `lpassCommand` parameter. Docs in README.
+* Support for complex LastPass types (credit cards, bank accounts, etc)
+* Added `outputType` parameter. Docs in README.
+
 ## 0.1.0
 
 Huge thanks to GitHub user @itfranck!
