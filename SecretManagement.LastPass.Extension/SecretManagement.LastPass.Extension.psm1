@@ -3,10 +3,11 @@
 using namespace Microsoft.PowerShell.SecretManagement
 
 # The capture groups are:
-# 1. The ls short output (just the name & id)
-# 2. The name of the secret
-# 3. The username of the secret
-$lsLongOutput = "\d\d\d\d-\d\d-\d\d \d\d:\d\d ((.*) \[id: \d*\]) \[username: (.*)\]"
+# 1. The date and time that the secret was stored
+# 2. The ls short output (just the name & id)
+# 3. The name of the secret
+# 4. The username of the secret
+$lsLongOutput = "(\d\d\d\d-\d\d-\d\d \d\d:\d\d)? *((.*) \[id: \d*\]) \[username: (.*)\]"
 
     # Custom notes in lpass CLI are a bit of a mess.
     # For default types
@@ -57,14 +58,14 @@ function Invoke-lpass {
     
     if ($lpassCommand -ne '' -and ((& "$lpassCommand" $lpassPath --version ) -like 'LastPass CLI*') ) {
         if ($InputObject) {
-            return $InputObject | & "$lpassCommand" $lpassPath @Arguments 
+            return $InputObject | & "$lpassCommand" $lpassPath @Arguments *>&1
         }
-        return   & "$lpassCommand" $lpassPath @Arguments 
+        return   & "$lpassCommand" $lpassPath @Arguments *>&1
      } elseif (Get-Command $lpassPath) {
         if ($InputObject) {
-            return  $InputObject | & $lpassPath @Arguments 
+            return  $InputObject | & $lpassPath @Arguments *>&1
         }
-        return   & $lpassCommand $lpassPath @Arguments 
+        return & $lpassPath @Arguments *>&1
     }
 
     throw "lpass executable not found or installed."
@@ -90,10 +91,13 @@ function Get-Secret
 
     try {
         $res = Invoke-lpass 'show', '--name', $Name, '--all'
-        if ($null -eq $res) {
-            # Returning nothing is not allowed. We leave error handling to SecretManagement
-            return #Will produce "Get-Secret : The secret $Name was not found." error.
+
+        # We use ToString() here to turn the ErrorRecord into a string if we got an ErrorRecord
+        if ($res.ToString() -eq "Error: Could not find specified account(s).") {
+            # Will produce "Get-Secret : The secret $Name was not found." error.
+            return
         }
+
         if ($res[0] -eq 'Multiple matches found.') {
             Write-Warning "Multiple matches found with the name $Name. `nThe first matching result will be returned."
             $Id = [regex]::Match($res[1], '\[id: (.*)\]').Groups[1].value
@@ -158,10 +162,16 @@ function Set-Secret
     $sb = [System.Text.StringBuilder]::new()
     
     
-    if ($Secret -is [string]) {
-        $Secret = @{URL = ' http://sn';Notes = $Secret}
+    if ($Secret -is [string] -or $Secret -is [securestring]) {
+        $Secret = @{
+            URL = ' http://sn'
+            Notes = $Secret
+        }
     } elseif ($Secret -is [pscredential]) {
-        $Secret = @{Username = $Secret.Username; Password = $Secret.GetNetworkCredential().password}
+        $Secret = @{
+            Username = $Secret.Username
+            Password = $Secret.GetNetworkCredential().password
+        }
     }
 
 
@@ -174,8 +184,7 @@ function Set-Secret
         $Keys = $Secret.Keys.Where({$_ -notin $SpecialKeys })
         foreach ($k in $Keys) {
             if ($Secret.$k -is [securestring]) {
-                $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Secret.$k)
-                $Secret.$k = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+                $Secret.$k = [System.Net.NetworkCredential]::new("", $Secret.$k).Password
             }
             $sb.AppendLine("$($k): $($Secret.$k)") | Out-Null
         }
@@ -183,16 +192,16 @@ function Set-Secret
         # Notes need to be on a new line
         if ($null -ne $Secret.Notes) {
             if ($Secret.Notes -is [securestring]) {
-                $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Secret.Notes)
-                $Secret.Notes = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+                $Secret.Notes = [System.Net.NetworkCredential]::new("", $Secret.Notes).Password
             }
             $sb.AppendLine("Notes: `n$($Secret.Notes)") | Out-Null
         }
     } 
     
     try {
-        $res = Invoke-lpass 'show', '--sync=now', '--name', $Name, '2>/dev/null' -ErrorAction Stop 
-        $SecretExists = $null -ne $res 
+        $res = Invoke-lpass 'show', '--sync=now', '--name', $Name
+        # We use ToString() here to turn the ErrorRecord into a string if we got an ErrorRecord
+        $SecretExists = $res.ToString() -ne "Error: Could not find specified account(s)."
 
         if ($SecretExists) {
             Write-Verbose "Editing secret" 
@@ -202,8 +211,7 @@ function Set-Secret
             $NoteTypeArgs = @()
             if ($null -ne $Secret.NoteType) {
                 if ($Secret.NoteType -is [securestring]) { 
-                    $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Secret.NoteType)
-                    $Secret.NoteType = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+                    $Secret.NoteType = [System.Net.NetworkCredential]::new("", $Secret.NoteType).Password
                 }
                 $NoteTypeArgs += "--note-type=$($Secret.NoteType)"
             }
@@ -256,13 +264,13 @@ function Get-SecretInfo
         Where-Object { 
             $IsMatch = $_ -match $lsLongOutput 
             if (-not $IsMatch ) { Write-Debug -Message "No match for: $_ `nThis record will be ignored." }
-            $IsMatch -and $pattern.IsMatch($Matches[2])
+            $IsMatch -and $pattern.IsMatch($Matches[3])
         } |
         ForEach-Object {
             $type = if ($AdditionalParameters.outputType -eq 'Detailed') {
                 [SecretType]::Hashtable
             }
-            elseif ($Matches[3]) {
+            elseif ($Matches[4]) {
                 [SecretType]::PSCredential
             }
             else {
@@ -270,7 +278,7 @@ function Get-SecretInfo
             }
 
             [SecretInformation]::new(
-                ($Matches[1] -replace '\[(id: \d*?)\]$', '($1)'), 
+                ($Matches[2] -replace '\[(id: \d*?)\]$', '($1)'), 
                 $type,
                 $VaultName)
         }

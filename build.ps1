@@ -2,6 +2,10 @@
 param (
     [Parameter()]
     [switch]
+    $Test,
+
+    [Parameter()]
+    [switch]
     $Package,
 
     [Parameter()]
@@ -10,6 +14,10 @@ param (
 )
 
 Push-Location $PSScriptRoot
+
+if ($Test) {
+    Invoke-Pester test
+}
 
 if ($Package) {
     $outDir = Join-Path 'out' 'SecretManagement.LastPass'
