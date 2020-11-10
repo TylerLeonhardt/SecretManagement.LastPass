@@ -201,7 +201,7 @@ function Set-Secret
     try {
         $res = Invoke-lpass 'show', '--sync=now', '--name', $Name
         # We use ToString() here to turn the ErrorRecord into a string if we got an ErrorRecord
-        $SecretExists = $res.ToString() -ne "Error: Could not find specified account(s)."
+        $SecretExists = $null -ne $res -and $res.ToString() -ne "Error: Could not find specified account(s)."
 
         if ($SecretExists) {
             Write-Verbose "Editing secret" 
