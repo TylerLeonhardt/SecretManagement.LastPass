@@ -83,8 +83,10 @@ function Get-Secret
         [hashtable] $AdditionalParameters
     )
 
-    # TODO error handling
+    # -eq $true is used since the value will be null before Preview 5, which is equivalent to -verbose:$true
+    $VerboseFlag = @{Verbose = $AdditionalParameters.Verbose -eq $true } 
 
+    # TODO error handling
     if ($Name -match ".* \(id: (\d*)\)") {
         $Name = $Matches[1]
     }
@@ -137,10 +139,10 @@ function Get-Secret
     }
     $IsCustomType = $AdditionalParameters.outputType -eq 'Detailed' -or $MyMatches.key.Contains('NoteType')
     If ($IsCustomType) {
-        $Output = Get-ComplexSecret -Fields $MyMatches -Note $Note 
+        $Output = Get-ComplexSecret -Fields $MyMatches -Note $Note @VerboseFlag
     }
     else {
-        $Output = Get-SimpleSecret -Fields $MyMatches -Note $Note
+        $Output = Get-SimpleSecret -Fields $MyMatches -Note $Note @VerboseFlag
     }
     
     return $Output
@@ -159,6 +161,9 @@ function Set-Secret
         [Parameter(ValueFromPipelineByPropertyName)]
         [hashtable] $AdditionalParameters
     )
+    # -eq $true is used since the value will be null before Preview 5, which is equivalent to -verbose:$true
+    $VerboseFlag = @{Verbose = $AdditionalParameters.Verbose -eq $true } 
+
     $sb = [System.Text.StringBuilder]::new()
     
     
@@ -204,10 +209,10 @@ function Set-Secret
         $SecretExists = $null -ne $res -and $res.ToString() -ne "Error: Could not find specified account(s)."
 
         if ($SecretExists) {
-            Write-Verbose "Editing secret" 
+            Write-Verbose "Editing secret" @VerboseFlag
             $sb.ToString() | Invoke-lpass 'edit', '--non-interactive', $Name
         } else {
-            Write-Verbose "Adding new secret" 
+            Write-Verbose "Adding new secret" @VerboseFlag
             $NoteTypeArgs = @()
             if ($null -ne $Secret.NoteType) {
                 if ($Secret.NoteType -is [securestring]) { 
@@ -257,13 +262,16 @@ function Get-SecretInfo
         [string] $VaultName,
         [hashtable] $AdditionalParameters
     )
+    
+    # -eq $true is used since the value will be null before Preview 5, which is equivalent to -verbose:$true
+    $VerboseFlag = @{Verbose = $AdditionalParameters.Verbose -eq $true } 
 
     $Filter = "*$Filter"
     $pattern = [WildcardPattern]::new($Filter)
     Invoke-lpass 'ls','-l' |
         Where-Object { 
             $IsMatch = $_ -match $lsLongOutput 
-            if (-not $IsMatch ) { Write-Debug -Message "No match for: $_ `nThis record will be ignored." }
+            if (-not $IsMatch ) { Write-Verbose -Message "No match for: $_ `nThis record will be ignored." @VerboseFlag }
             $IsMatch -and $pattern.IsMatch($Matches[3])
         } |
         ForEach-Object {
@@ -327,7 +335,8 @@ function Get-ComplexSecret {
         $Fields,
         $Note
     )
-    $Dupes = ($Fields | Group-Object key).Where( { $_.Count -gt 1 })
+    # Notes is removed from the fields. If present, this mean we have another field using that name under a different case.
+    $Dupes = ($Fields | Group-Object key).Where( { $_.Count -gt 1 }) -or ($Fields.Contains('Notes') -and ![String]::IsNullOrEmpty($Note))
     
     if ($Dupes.Count -gt 0) {
         Write-Verbose 'Creating case-sensitve hashtable'
