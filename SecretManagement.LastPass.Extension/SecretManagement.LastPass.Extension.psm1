@@ -85,6 +85,10 @@ function Get-Secret
 
     # TODO error handling
 
+    if ($AdditionalParameters.Verbose) {
+        $VerbosePreference = "Continue"
+    }
+
     if ($Name -match ".* \(id: (\d*)\)") {
         $Name = $Matches[1]
     }
@@ -140,7 +144,7 @@ function Get-Secret
         $Output = Get-ComplexSecret -Fields $MyMatches -Note $Note 
     }
     else {
-        $Output = Get-SimpleSecret -Fields $MyMatches -Note $Note
+        $Output = Get-SimpleSecret -Fields $MyMatches -Note $Note 
     }
     
     return $Output
@@ -159,6 +163,10 @@ function Set-Secret
         [Parameter(ValueFromPipelineByPropertyName)]
         [hashtable] $AdditionalParameters
     )
+    # -eq $true is used since the value will be null before Preview 5, which is equivalent to -verbose:$true
+    if ($AdditionalParameters.Verbose) {
+        $VerbosePreference = "Continue"
+    }
     $sb = [System.Text.StringBuilder]::new()
     
     
@@ -257,13 +265,16 @@ function Get-SecretInfo
         [string] $VaultName,
         [hashtable] $AdditionalParameters
     )
+    if ($AdditionalParameters.Verbose) {
+        $VerbosePreference = "Continue"
+    }
 
     $Filter = "*$Filter"
     $pattern = [WildcardPattern]::new($Filter)
     Invoke-lpass 'ls','-l' |
         Where-Object { 
             $IsMatch = $_ -match $lsLongOutput 
-            if (-not $IsMatch ) { Write-Debug -Message "No match for: $_ `nThis record will be ignored." }
+            if (-not $IsMatch ) { Write-Verbose -Message "No match for: $_ `nThis record will be ignored." }
             $IsMatch -and $pattern.IsMatch($Matches[3])
         } |
         ForEach-Object {
@@ -327,7 +338,8 @@ function Get-ComplexSecret {
         $Fields,
         $Note
     )
-    $Dupes = ($Fields | Group-Object key).Where( { $_.Count -gt 1 })
+    # Notes is removed from the fields. If present, this mean we have another field using that name under a different case.
+    $Dupes = ($Fields | Group-Object key).Where( { $_.Count -gt 1 }) -or ($Fields.Contains('Notes') -and ![String]::IsNullOrEmpty($Note))
     
     if ($Dupes.Count -gt 0) {
         Write-Verbose 'Creating case-sensitve hashtable'
