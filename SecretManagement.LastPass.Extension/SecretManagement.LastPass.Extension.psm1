@@ -86,7 +86,7 @@ function Get-Secret
     # TODO error handling
 
     if ($AdditionalParameters.Verbose) {
-    $VerbosePreference = "Continue"
+        $VerbosePreference = "Continue"
     }
 
     if ($Name -match ".* \(id: (\d*)\)") {
