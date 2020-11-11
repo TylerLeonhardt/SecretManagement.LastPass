@@ -163,7 +163,6 @@ function Set-Secret
         [Parameter(ValueFromPipelineByPropertyName)]
         [hashtable] $AdditionalParameters
     )
-    # -eq $true is used since the value will be null before Preview 5, which is equivalent to -verbose:$true
     if ($AdditionalParameters.Verbose) {
         $VerbosePreference = "Continue"
     }
