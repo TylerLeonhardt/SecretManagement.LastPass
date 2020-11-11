@@ -83,10 +83,11 @@ function Get-Secret
         [hashtable] $AdditionalParameters
     )
 
+    # TODO error handling
+
     # -eq $true is used since the value will be null before Preview 5, which is equivalent to -verbose:$true
     $VerboseFlag = @{Verbose = $AdditionalParameters.Verbose -eq $true } 
 
-    # TODO error handling
     if ($Name -match ".* \(id: (\d*)\)") {
         $Name = $Matches[1]
     }
@@ -163,7 +164,6 @@ function Set-Secret
     )
     # -eq $true is used since the value will be null before Preview 5, which is equivalent to -verbose:$true
     $VerboseFlag = @{Verbose = $AdditionalParameters.Verbose -eq $true } 
-
     $sb = [System.Text.StringBuilder]::new()
     
     
@@ -262,7 +262,6 @@ function Get-SecretInfo
         [string] $VaultName,
         [hashtable] $AdditionalParameters
     )
-    
     # -eq $true is used since the value will be null before Preview 5, which is equivalent to -verbose:$true
     $VerboseFlag = @{Verbose = $AdditionalParameters.Verbose -eq $true } 
 
