@@ -274,7 +274,7 @@ function Get-SecretInfo
     Invoke-lpass 'ls','-l' |
         Where-Object { 
             $IsMatch = $_ -match $lsLongOutput 
-            if (-not $IsMatch ) { Write-Verbose -Message "No match for: $_ `nThis record will be ignored."  }
+            if (-not $IsMatch ) { Write-Verbose -Message "No match for: $_ `nThis record will be ignored." }
             $IsMatch -and $pattern.IsMatch($Matches[3])
         } |
         ForEach-Object {
