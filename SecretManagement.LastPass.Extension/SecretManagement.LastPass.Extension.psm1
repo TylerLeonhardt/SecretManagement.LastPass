@@ -9,11 +9,11 @@ using namespace Microsoft.PowerShell.SecretManagement
 # 4. The username of the secret
 $lsLongOutput = "(\d\d\d\d-\d\d-\d\d \d\d:\d\d)? *((.*) \[id: \d*\]) \[username: (.*)\]"
 
-    # Custom notes in lpass CLI are a bit of a mess.
-    # For default types
-    # Get operation will return the value
-    # Set operation will only accept the key
-    # This is to convert value obtained from Get when doing a Set. 
+# Custom notes in lpass CLI are a bit of a mess.
+# For default types
+# Get operation will return the value
+# Set operation will only accept the key
+# This is to convert value obtained from Get when doing a Set. 
 $DefaultNoteTypeMap = @{
     'Address'           = 'address'
     # 'amex' = ''       # Possibly deprecated            
