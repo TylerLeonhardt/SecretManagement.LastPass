@@ -218,24 +218,25 @@ function Set-Secret
     try {
         $res = Invoke-lpass 'show', '--sync=now', '--name', $Name -ErrorAction SilentlyContinue
         # We use ToString() here to turn the ErrorRecord into a string if we got an ErrorRecord
-        switch ($res) {
-            $null {
-                # It should never happen... Try to proceed anyway ?
-                Write-Warning "Querying the secret $Name produced an unexpected result of `$Null"
-                $SecretExists = $false   
-                break
-            }
-            $lpassMessage.AccountNotFound {
-                $SecretExists = $false
-                break
-            }
-            $lpassMessage.LoggedOut {
-                Write-Error $lpassMessage.LoggedOut 
-                return $false
-                break
-            }
-            {Default} {
-                $SecretExists = $true
+        if ($null -eq $res) {
+            # This should never ever happen... 
+            Write-Warning "Querying the secret $Name produced an unexpected result of `$Null"
+            $SecretExists = $false   
+        }
+        else {
+            switch ($res.ToString()) {
+                $lpassMessage.AccountNotFound {
+                    $SecretExists = $false
+                    break
+                }
+                $lpassMessage.LoggedOut {
+                    Write-Error $lpassMessage.LoggedOut 
+                    return $false
+                    break
+                }
+                { Default } {
+                    $SecretExists = $true
+                }
             }
         }
 
