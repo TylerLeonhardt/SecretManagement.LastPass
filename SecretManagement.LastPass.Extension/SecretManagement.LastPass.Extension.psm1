@@ -9,11 +9,11 @@ using namespace Microsoft.PowerShell.SecretManagement
 # 4. The username of the secret
 $lsLongOutput = "(\d\d\d\d-\d\d-\d\d \d\d:\d\d)? *((.*) \[id: \d*\]) \[username: (.*)\]"
 
-    # Custom notes in lpass CLI are a bit of a mess.
-    # For default types
-    # Get operation will return the value
-    # Set operation will only accept the key
-    # This is to convert value obtained from Get when doing a Set. 
+# Custom notes in lpass CLI are a bit of a mess.
+# For default types
+# Get operation will return the value
+# Set operation will only accept the key
+# This is to convert value obtained from Get when doing a Set. 
 $DefaultNoteTypeMap = @{
     'Address'           = 'address'
     # 'amex' = ''       # Possibly deprecated            
@@ -35,6 +35,12 @@ $DefaultNoteTypeMap = @{
     #'visa' = ''        # Possibly deprecated
     'Wi-Fi Password'    = 'wifi'
 } 
+
+$lpassMessage = @{
+    AccountNotFound = 'Error: Could not find specified account(s).'
+    LoggedOut = 'Error: Could not find decryption key. Perhaps you need to login with `lpass login`.'
+    MultipleMatches = 'Multiple matches found.'
+}
 # These fields need special consideration when working with secrets.
 # Language / NoteType are fields that are part of any custom notes and always appear last (before Notes)
 #Notes field can appear in any secrets and is always the last field. It is also the only multiline field.
@@ -51,6 +57,10 @@ function Invoke-lpass {
         [object]
         $InputObject
     )
+    $IgnoreErrors = $null
+    if ($ErrorActionPreference -eq 'SilentlyContinue') {
+        $IgnoreErrors = '2>&1'
+    }
 
     $lpassCommand = if ($null -ne $AdditionalParameters.lpassCommand){$AdditionalParameters.lpassCommand} else {''}
     $lpassPath = if ($null -ne $AdditionalParameters.lpassPath){"`"$($AdditionalParameters.lpassPath)`""} else {'lpass'}
@@ -58,14 +68,14 @@ function Invoke-lpass {
     
     if ($lpassCommand -ne '' -and ((& "$lpassCommand" $lpassPath --version ) -like 'LastPass CLI*') ) {
         if ($InputObject) {
-            return $InputObject | & "$lpassCommand" $lpassPath @Arguments *>&1
+            return $InputObject | & "$lpassCommand" $lpassPath @Arguments $IgnoreErrors
         }
-        return   & "$lpassCommand" $lpassPath @Arguments *>&1
+        return   & "$lpassCommand" $lpassPath @Arguments $IgnoreErrors
      } elseif (Get-Command $lpassPath) {
         if ($InputObject) {
-            return  $InputObject | & $lpassPath @Arguments *>&1
+            return  $InputObject | & $lpassPath @Arguments $IgnoreErrors
         }
-        return & $lpassPath @Arguments *>&1
+        return & $lpassPath @Arguments $IgnoreErrors
     }
 
     throw "lpass executable not found or installed."
@@ -97,12 +107,12 @@ function Get-Secret
         $res = Invoke-lpass 'show', '--name', $Name, '--all'
 
         # We use ToString() here to turn the ErrorRecord into a string if we got an ErrorRecord
-        if ($res.ToString() -eq "Error: Could not find specified account(s).") {
+        if ($null -eq $res -or $res.ToString() -eq $lpassMessage.AccountNotFound) {
             # Will produce "Get-Secret : The secret $Name was not found." error.
             return
         }
 
-        if ($res[0] -eq 'Multiple matches found.') {
+        if ($res[0] -eq $lpassMessage.MultipleMatches) {
             Write-Warning "Multiple matches found with the name $Name. `nThe first matching result will be returned."
             $Id = [regex]::Match($res[1], '\[id: (.*)\]').Groups[1].value
             $res = Invoke-lpass 'show', '--name', $Id, '--all'
@@ -163,7 +173,6 @@ function Set-Secret
         [Parameter(ValueFromPipelineByPropertyName)]
         [hashtable] $AdditionalParameters
     )
-    # -eq $true is used since the value will be null before Preview 5, which is equivalent to -verbose:$true
     if ($AdditionalParameters.Verbose) {
         $VerbosePreference = "Continue"
     }
@@ -207,9 +216,29 @@ function Set-Secret
     } 
     
     try {
-        $res = Invoke-lpass 'show', '--sync=now', '--name', $Name
+        $res = Invoke-lpass 'show', '--sync=now', '--name', $Name -ErrorAction SilentlyContinue
         # We use ToString() here to turn the ErrorRecord into a string if we got an ErrorRecord
-        $SecretExists = $null -ne $res -and $res.ToString() -ne "Error: Could not find specified account(s)."
+        if ($null -eq $res) {
+            # This should never ever happen... 
+            Write-Warning "Querying the secret $Name produced an unexpected result of `$Null"
+            $SecretExists = $false   
+        }
+        else {
+            switch ($res.ToString()) {
+                $lpassMessage.AccountNotFound {
+                    $SecretExists = $false
+                    break
+                }
+                $lpassMessage.LoggedOut {
+                    Write-Error $lpassMessage.LoggedOut 
+                    return $false
+                    break
+                }
+                Default {
+                    $SecretExists = $true
+                }
+            }
+        }
 
         if ($SecretExists) {
             Write-Verbose "Editing secret" 
