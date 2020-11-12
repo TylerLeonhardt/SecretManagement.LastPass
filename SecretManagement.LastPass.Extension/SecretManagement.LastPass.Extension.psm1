@@ -225,13 +225,13 @@ function Set-Secret
                 $SecretExists = $false   
                 break
             }
+            $lpassMessage.AccountNotFound {
+                $SecretExists = $false
+                break
+            }
             $lpassMessage.LoggedOut {
                 Write-Error $lpassMessage.LoggedOut 
                 return $false
-                break
-            }
-            $lpassMessage.AccountNotFound {
-                $SecretExists = $false
                 break
             }
             {Default} {
