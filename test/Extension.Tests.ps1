@@ -1,3 +1,6 @@
+# Change this to however you invoke lpass
+$IsNotLoggedIn = (lpass status 2>&1) -notmatch "Logged in as .*"
+
 Describe 'SecretManagement.LastPass tests' {
     BeforeAll {
         & $PSScriptRoot/reload.ps1
@@ -12,7 +15,7 @@ Describe 'SecretManagement.LastPass tests' {
         Get-SecretVault $VaultName | Should -Not -BeNullOrEmpty
     }
 
-    It 'Can store a string secret which is treated like a securestring' {
+    It 'Can store a string secret which is treated like a securestring' -Skip:$IsNotLoggedIn {
         $secretText = 'This is my string secret'
         Set-Secret -Name $secretName -Vault $VaultName -Secret $secretText
 
@@ -29,7 +32,7 @@ Describe 'SecretManagement.LastPass tests' {
         } | Should -Throw -ErrorId 'GetSecretNotFound,Microsoft.PowerShell.SecretManagement.GetSecretCommand'
     }
 
-    It 'Can store a secure string secret' {
+    It 'Can store a secure string secret' -Skip:$IsNotLoggedIn {
         $secretText = 'This is my securestring secret'
         Set-Secret -Name $secretName -Vault $VaultName -Secret ($secretText | ConvertTo-SecureString -AsPlainText)
 
@@ -44,6 +47,31 @@ Describe 'SecretManagement.LastPass tests' {
         Remove-Secret -Name $secretName -Vault $VaultName
         { Get-Secret -Name $secretName -Vault $VaultName -ErrorAction Stop } | Should -Throw -ErrorId 'GetSecretNotFound,Microsoft.PowerShell.SecretManagement.GetSecretCommand'
     }
+
+    It 'Can store a PSCredential secret' -Skip:$IsNotLoggedIn {
+        $secretText = 'This is my pscredential secret'
+        $secret = [PSCredential]::new('myUser', ($secretText | ConvertTo-SecureString -AsPlainText))
+        Set-Secret -Name $secretName -Vault $VaultName -Secret $secret
+
+        $secretInfo = Get-SecretInfo -Name $secretName -Vault $VaultName
+        $secretInfo.Name | Should -BeLike "$secretName (id:*)"
+        $secretInfo.Type | Should -BeExactly 'PSCredential'
+        $secretInfo.VaultName | Should -BeExactly $VaultName
+
+        $secret = Get-Secret -Name $secretName -Vault $VaultName
+        $secret.UserName | Should -BeExactly 'myUser'
+        $secret.Password | ConvertFrom-SecureString -AsPlainText | Should -BeExactly $secretText
+
+        Remove-Secret -Name $secretName -Vault $VaultName
+        { Get-Secret -Name $secretName -Vault $VaultName -ErrorAction Stop } | Should -Throw -ErrorId 'GetSecretNotFound,Microsoft.PowerShell.SecretManagement.GetSecretCommand'
+    }
+
+    It 'Logged out works' -Skip:(!$IsNotLoggedIn) {
+        { Get-Secret -Name "asdf" -Vault $VaultName -ErrorAction Stop } |
+            Should -Throw -ExceptionType Microsoft.PowerShell.SecretManagement.PasswordRequiredException
+    }
+
+    #region Tests to add back in later from Steve's module
 
     # Skipping because I don't think this extension supports byte array.
     It 'Can store a byte array secret' -Skip {
@@ -61,24 +89,6 @@ Describe 'SecretManagement.LastPass tests' {
 
         Remove-Secret -Name $secretName -Vault $VaultName
         { Get-Secret -Name $secretName -ErrorAction Stop } | Should -Throw -ErrorId 'GetSecretNotFound,Microsoft.PowerShell.SecretManagement.GetSecretCommand'
-    }
-
-    It 'Can store a PSCredential secret' {
-        $secretText = 'This is my pscredential secret'
-        $secret = [PSCredential]::new('myUser', ($secretText | ConvertTo-SecureString -AsPlainText))
-        Set-Secret -Name $secretName -Vault $VaultName -Secret $secret
-
-        $secretInfo = Get-SecretInfo -Name $secretName -Vault $VaultName
-        $secretInfo.Name | Should -BeLike "$secretName (id:*)"
-        $secretInfo.Type | Should -BeExactly 'PSCredential'
-        $secretInfo.VaultName | Should -BeExactly $VaultName
-
-        $secret = Get-Secret -Name $secretName -Vault $VaultName
-        $secret.UserName | Should -BeExactly 'myUser'
-        $secret.Password | ConvertFrom-SecureString -AsPlainText | Should -BeExactly $secretText
-
-        Remove-Secret -Name $secretName -Vault $VaultName
-        { Get-Secret -Name $secretName -Vault $VaultName -ErrorAction Stop } | Should -Throw -ErrorId 'GetSecretNotFound,Microsoft.PowerShell.SecretManagement.GetSecretCommand'
     }
 
     # Skipping because I don't think this extension supports arbitrary hashtables.
@@ -119,4 +129,6 @@ Describe 'SecretManagement.LastPass tests' {
         Remove-Secret -Name $secretName -Vault $VaultName
         { Get-Secret -Name $secretName -ErrorAction Stop } | Should -Throw -ErrorId 'GetSecretNotFound,Microsoft.PowerShell.SecretManagement.GetSecretCommand'
     }
+
+    #endregion
 }
