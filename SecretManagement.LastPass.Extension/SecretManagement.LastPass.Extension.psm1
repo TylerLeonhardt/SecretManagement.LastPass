@@ -234,7 +234,7 @@ function Set-Secret
                     return $false
                     break
                 }
-                { Default } {
+                Default {
                     $SecretExists = $true
                 }
             }
