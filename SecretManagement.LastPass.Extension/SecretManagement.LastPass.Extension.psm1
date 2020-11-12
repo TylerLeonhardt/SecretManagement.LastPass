@@ -36,12 +36,11 @@ $DefaultNoteTypeMap = @{
     'Wi-Fi Password'    = 'wifi'
 } 
 
-  $lpassMessage = @{
-        AccountNotFound = 'Error: Could not find specified account(s).'
-        LoggedOut = 'Error: Could not find decryption key. Perhaps you need to login with `lpass login`.'
-        MultipleMatches = 'Multiple matches found.'
-    }
-
+$lpassMessage = @{
+    AccountNotFound = 'Error: Could not find specified account(s).'
+    LoggedOut = 'Error: Could not find decryption key. Perhaps you need to login with `lpass login`.'
+    MultipleMatches = 'Multiple matches found.'
+}
 # These fields need special consideration when working with secrets.
 # Language / NoteType are fields that are part of any custom notes and always appear last (before Notes)
 #Notes field can appear in any secrets and is always the last field. It is also the only multiline field.
@@ -215,7 +214,7 @@ function Set-Secret
             $sb.AppendLine("Notes: `n$($Secret.Notes)") | Out-Null
         }
     } 
-    
+
     try {
         $res = Invoke-lpass 'show', '--sync=now', '--name', $Name -ErrorAction SilentlyContinue
         # We use ToString() here to turn the ErrorRecord into a string if we got an ErrorRecord
