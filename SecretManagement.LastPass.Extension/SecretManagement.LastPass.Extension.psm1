@@ -35,6 +35,13 @@ $DefaultNoteTypeMap = @{
     #'visa' = ''        # Possibly deprecated
     'Wi-Fi Password'    = 'wifi'
 } 
+
+  $lpassMessage = @{
+        AccountNotFound = 'Error: Could not find specified account(s).'
+        LoggedOut = 'Error: Could not find decryption key. Perhaps you need to login with `lpass login`.'
+        MultipleMatches = 'Multiple matches found.'
+    }
+
 # These fields need special consideration when working with secrets.
 # Language / NoteType are fields that are part of any custom notes and always appear last (before Notes)
 #Notes field can appear in any secrets and is always the last field. It is also the only multiline field.
@@ -101,12 +108,12 @@ function Get-Secret
         $res = Invoke-lpass 'show', '--name', $Name, '--all'
 
         # We use ToString() here to turn the ErrorRecord into a string if we got an ErrorRecord
-        if ($res.ToString() -eq "Error: Could not find specified account(s).") {
+        if ($null -eq $res -or $res.ToString() -eq $lpassMessage.AccountNotFound) {
             # Will produce "Get-Secret : The secret $Name was not found." error.
             return
         }
 
-        if ($res[0] -eq 'Multiple matches found.') {
+        if ($res[0] -eq $lpassMessage.MultipleMatches) {
             Write-Warning "Multiple matches found with the name $Name. `nThe first matching result will be returned."
             $Id = [regex]::Match($res[1], '\[id: (.*)\]').Groups[1].value
             $res = Invoke-lpass 'show', '--name', $Id, '--all'
@@ -212,7 +219,26 @@ function Set-Secret
     try {
         $res = Invoke-lpass 'show', '--sync=now', '--name', $Name -ErrorAction SilentlyContinue
         # We use ToString() here to turn the ErrorRecord into a string if we got an ErrorRecord
-        $SecretExists = $null -ne $res -and $res.ToString() -ne "Error: Could not find specified account(s)."
+        switch ($res) {
+            $null {
+                # It should never happen... Try to proceed anyway ?
+                Write-Warning "Querying the secret $Name produced an unexpected result of `$Null"
+                $SecretExists = $false   
+                break
+            }
+            $lpassMessage.LoggedOut {
+                Write-Error $lpassMessage.LoggedOut 
+                return $false
+                break
+            }
+            $lpassMessage.AccountNotFound {
+                $SecretExists = $false
+                break
+            }
+            {Default} {
+                $SecretExists = $true
+            }
+        }
 
         if ($SecretExists) {
             Write-Verbose "Editing secret" 
