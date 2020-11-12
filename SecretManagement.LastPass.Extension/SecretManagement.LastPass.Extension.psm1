@@ -214,7 +214,7 @@ function Set-Secret
             $sb.AppendLine("Notes: `n$($Secret.Notes)") | Out-Null
         }
     } 
-
+    
     try {
         $res = Invoke-lpass 'show', '--sync=now', '--name', $Name -ErrorAction SilentlyContinue
         # We use ToString() here to turn the ErrorRecord into a string if we got an ErrorRecord
