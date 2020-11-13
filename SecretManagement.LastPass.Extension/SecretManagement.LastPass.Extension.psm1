@@ -38,12 +38,13 @@ $DefaultNoteTypeMap = @{
     'Wi-Fi Password'    = 'wifi'
 } 
 
-$LoggedOutMessage = 'Error: You don''t apprear to be logged in. Perhaps you need to login with `lpass login`.'
-
 $lpassMessage = @{
     AccountNotFound = 'Error: Could not find specified account(s).'
+    # Need to use wildcard since the path of lpass could be different
+    LoggedOut = 'Error: Could not find decryption key. Perhaps you need to login with*'
     MultipleMatches = 'Multiple matches found.'
 }
+
 # These fields need special consideration when working with secrets.
 # Language / NoteType are fields that are part of any custom notes and always appear last (before Notes)
 #Notes field can appear in any secrets and is always the last field. It is also the only multiline field.
@@ -67,21 +68,13 @@ function Invoke-lpass {
     $lpassPath = if ($null -ne $AdditionalParameters.lpassPath){"`"$($AdditionalParameters.lpassPath)`""} else {'lpass'}
 
     if ($lpassCommand -ne '' -and ((& "$lpassCommand" $lpassPath --version ) -like 'LastPass CLI*') ) {
-        $status = & "$lpassCommand" $lpassPath 'status' 2>&1
-        if($status -notmatch "Logged in as .*") {
-            throw [PasswordRequiredException] $LoggedOutMessage
-        }
         if ($InputObject) {
             return $InputObject | & "$lpassCommand" $lpassPath @Arguments 2>&1
         }
-        return   & "$lpassCommand" $lpassPath @Arguments 2>&1
+        return & "$lpassCommand" $lpassPath @Arguments 2>&1
     } elseif (Get-Command $lpassPath) {
-        $status = & $lpassPath 'status' 2>&1
-        if($status -notmatch "Logged in as .*") {
-            throw [PasswordRequiredException] $LoggedOutMessage
-        }
         if ($InputObject) {
-            return  $InputObject | & $lpassPath @Arguments 2>&1
+            return $InputObject | & $lpassPath @Arguments 2>&1
         }
         return & $lpassPath @Arguments 2>&1
     }
@@ -219,14 +212,26 @@ function Set-Secret
     $res = Invoke-lpass 'show', '--sync=now', '--name', $Name
 
     # We use ToString() here to turn the ErrorRecord into a string if we got an ErrorRecord
-    $SecretExists = if ($null -eq $res) {
+    $SecretExists = switch -Wildcard ("$res") {
         # This should never ever happen...
-        Write-Warning "Querying the secret $Name produced an unexpected result of `$Null"
-        $false
-    } elseif ($res.ToString() -eq $lpassMessage.AccountNotFound) {
-        $false
-    } else {
-        $true
+        "" {
+            Write-Warning "Querying the secret $Name produced an unexpected result of `$Null"
+            $false
+            break
+        }
+        $lpassMessage.AccountNotFound {
+            $false
+            break
+        }
+        $lpassMessage.LoggedOut {
+            throw [PasswordRequiredException] $lpassMessage.LoggedOut
+            $false
+            break
+        }
+        default {
+            $true
+            break
+        }
     }
 
     if ($SecretExists) {
@@ -242,9 +247,10 @@ function Set-Secret
             $NoteTypeArgs += "--note-type=$($Secret.NoteType)"
         }
         $sb.ToString() | Invoke-lpass 'add', $Name, '--non-interactive', $NoteTypeArgs
-        #Explicit sync so calling set again do not duplicate the secret (add --sync=now not fast enough)
-        Invoke-lpass 'sync'
     }
+
+    # Explicit sync so calling set again does not duplicate the secret (add --sync=now not fast enough)
+    Invoke-lpass 'sync'
 
     return $true
 }
@@ -261,6 +267,7 @@ function Remove-Secret
         [hashtable] $AdditionalParameters
     )
 
+    # Grab the id because that's more exact
     if ($Name -match ".* \(id: (\d*)\)") {
         $Name = $Matches[1]
     }

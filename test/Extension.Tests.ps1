@@ -1,6 +1,3 @@
-# Change this to however you invoke lpass
-$IsNotLoggedIn = (lpass status 2>&1) -notmatch "Logged in as .*"
-
 Describe 'SecretManagement.LastPass tests' {
     BeforeAll {
         & $PSScriptRoot/reload.ps1
@@ -15,7 +12,7 @@ Describe 'SecretManagement.LastPass tests' {
         Get-SecretVault $VaultName | Should -Not -BeNullOrEmpty
     }
 
-    It 'Can store a string secret which is treated like a securestring' -Skip:$IsNotLoggedIn {
+    It 'Can store a string secret which is treated like a securestring' {
         $secretText = 'This is my string secret'
         Set-Secret -Name $secretName -Vault $VaultName -Secret $secretText
 
@@ -32,7 +29,7 @@ Describe 'SecretManagement.LastPass tests' {
         } | Should -Throw -ErrorId 'GetSecretNotFound,Microsoft.PowerShell.SecretManagement.GetSecretCommand'
     }
 
-    It 'Can store a secure string secret' -Skip:$IsNotLoggedIn {
+    It 'Can store a secure string secret' {
         $secretText = 'This is my securestring secret'
         Set-Secret -Name $secretName -Vault $VaultName -Secret ($secretText | ConvertTo-SecureString -AsPlainText)
 
@@ -48,7 +45,7 @@ Describe 'SecretManagement.LastPass tests' {
         { Get-Secret -Name $secretName -Vault $VaultName -ErrorAction Stop } | Should -Throw -ErrorId 'GetSecretNotFound,Microsoft.PowerShell.SecretManagement.GetSecretCommand'
     }
 
-    It 'Can store a PSCredential secret' -Skip:$IsNotLoggedIn {
+    It 'Can store a PSCredential secret' {
         $secretText = 'This is my pscredential secret'
         $secret = [PSCredential]::new('myUser', ($secretText | ConvertTo-SecureString -AsPlainText))
         Set-Secret -Name $secretName -Vault $VaultName -Secret $secret
@@ -64,11 +61,6 @@ Describe 'SecretManagement.LastPass tests' {
 
         Remove-Secret -Name $secretName -Vault $VaultName
         { Get-Secret -Name $secretName -Vault $VaultName -ErrorAction Stop } | Should -Throw -ErrorId 'GetSecretNotFound,Microsoft.PowerShell.SecretManagement.GetSecretCommand'
-    }
-
-    It 'Logged out works' -Skip:(!$IsNotLoggedIn) {
-        { Get-Secret -Name "asdf" -Vault $VaultName -ErrorAction Stop } |
-            Should -Throw -ExceptionType Microsoft.PowerShell.SecretManagement.PasswordRequiredException
     }
 
     #region Tests to add back in later from Steve's module
