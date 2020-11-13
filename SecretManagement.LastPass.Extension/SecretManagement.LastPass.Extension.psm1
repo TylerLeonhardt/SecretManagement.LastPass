@@ -63,24 +63,34 @@ function Invoke-lpass {
         [object]
         $InputObject
     )
+    $lpassCommand = if ($null -ne $AdditionalParameters.lpassCommand) { $AdditionalParameters.lpassCommand } else { '' }
+    $lpassPath = if ($null -ne $AdditionalParameters.lpassPath) { "`"$($AdditionalParameters.lpassPath)`"" } else { 'lpass' }
 
-    $lpassCommand = if ($null -ne $AdditionalParameters.lpassCommand){$AdditionalParameters.lpassCommand} else {''}
-    $lpassPath = if ($null -ne $AdditionalParameters.lpassPath){"`"$($AdditionalParameters.lpassPath)`""} else {'lpass'}
+    $IgnoreErrors = $ErrorActionPreference -eq 'SilentlyContinue'
+    $UseNative = $lpassCommand -eq ''
+    $UseCommand = -not $UseNative
 
-    if ($lpassCommand -ne '' -and ((& "$lpassCommand" $lpassPath --version ) -like 'LastPass CLI*') ) {
-        if ($InputObject) {
-            $result = $InputObject | & "$lpassCommand" $lpassPath @Arguments 2>&1
-        } else {
-            $result = & "$lpassCommand" $lpassPath @Arguments 2>&1
-        }
-    } elseif (Get-Command $lpassPath) {
-        if ($InputObject) {
-            $result = $InputObject | & $lpassPath @Arguments 2>&1
-        } else {
-            $result = & $lpassPath @Arguments 2>&1
+    if (($UseNative -and  (Get-Command $lpassPath -EA 0)) -or 
+        ($UseCommand -and (& "$lpassCommand" $lpassPath --version ) -notlike 'LastPass CLI*')) {
+        throw "lpass executable not found or installed."
+    }
+
+    # All other implementations seemed to succeed on 1 or more platform but failed when considering Windows (Wsl) / Linux / Mac together
+    if ($InputObject) {
+        switch ($true) {
+            {$UseNative -and $IgnoreErrors}  {$result = $InputObject | & $lpassPath @Arguments; break}
+            {$UseNative}                     {$result = $InputObject | & $lpassPath @Arguments 2>&1; break}
+            {$UseCommand -and $IgnoreErrors} {$result = $InputObject | & "$lpassCommand" $lpassPath @Arguments; break}
+            {$UseCommand}                    {$result = $InputObject | & "$lpassCommand" $lpassPath @Arguments 2>&1; break}
         }
     } else {
-        throw "lpass executable not found or installed."
+        switch ($true) {
+            { $UseNative -and $IgnoreErrors }   {$result = & $lpassPath @Arguments; break}
+            { $UseNative }                      {$result = & $lpassPath @Arguments 2>&1; break}
+            { $UseCommand -and $IgnoreErrors }  {$result = & "$lpassCommand" $lpassPath @Arguments; break}
+            { $UseCommand }                     {$result = & "$lpassCommand" $lpassPath @Arguments 2>&1; break}
+        
+        }
     }
 
     if ($result -is [System.Management.Automation.ErrorRecord]) {
@@ -124,7 +134,7 @@ function Get-Secret
         $Name = $Matches[1]
     }
 
-    $res = Invoke-lpass 'show', '--name', $Name, '--all'
+    $res = Invoke-lpass 'show', '--name', $Name, '--all' -ErrorAction SilentlyContinue
 
     # We use ToString() here to turn the ErrorRecord into a string if we got an ErrorRecord
     if ($null -eq $res -or $res.ToString() -eq $lpassMessage.AccountNotFound) {
@@ -229,7 +239,7 @@ function Set-Secret
         }
     } 
     
-    $res = Invoke-lpass 'show', '--sync=now', '--name', $Name
+    $res = Invoke-lpass 'show', '--sync=now', '--name', $Name -ErrorAction SilentlyContinue
 
     # We use ToString() here to turn the ErrorRecord into a string if we got an ErrorRecord
     $SecretExists = switch -Wildcard ($res) {
