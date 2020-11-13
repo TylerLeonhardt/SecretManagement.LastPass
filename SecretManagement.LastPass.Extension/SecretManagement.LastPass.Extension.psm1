@@ -350,10 +350,11 @@ function Get-ComplexSecret {
         $Fields,
         $Note
     )
-    # Notes is removed from the fields. If present, this mean we have another field using that name under a different case.
-    $Dupes = ($Fields | Group-Object key).Where( { $_.Count -gt 1 }) -or ($Fields.Contains('Notes') -and ![String]::IsNullOrEmpty($Note))
     
-    if ($Dupes.Count -gt 0) {
+    $Dupes = ($Fields | Group-Object key).Where( { $_.Count -gt 1 })
+    # Notes is removed from the fields. If present, this mean we have another field using that name under a different case.
+    $DupeNote = ($Fields.Contains('Notes') -and ![String]::IsNullOrEmpty($Note))
+    if ($Dupes.Count -gt 0 -or $DupeNote) {
         Write-Verbose 'Creating case-sensitve hashtable'
         $Output = [hashtable]::new([System.StringComparer]::InvariantCulture)
     } else {
@@ -361,11 +362,7 @@ function Get-ComplexSecret {
     }
     
     if (![String]::IsNullOrEmpty($Note)) { 
-        #The Notes field is ALWAYS the last field.
-        #It is also the only field that can be multiline.
-        #This is why we set the Notes to $Notes and ignore the last field when a Notes field exist.
         $Output.Notes = $Note
-        $Fields = $Fields | Select-Object -SkipLast 1
     }
 
     Foreach ($f in $Fields) {
