@@ -69,17 +69,37 @@ function Invoke-lpass {
 
     if ($lpassCommand -ne '' -and ((& "$lpassCommand" $lpassPath --version ) -like 'LastPass CLI*') ) {
         if ($InputObject) {
-            return $InputObject | & "$lpassCommand" $lpassPath @Arguments 2>&1
+            $result = $InputObject | & "$lpassCommand" $lpassPath @Arguments 2>&1
+        } else {
+            $result = & "$lpassCommand" $lpassPath @Arguments 2>&1
         }
-        return & "$lpassCommand" $lpassPath @Arguments 2>&1
     } elseif (Get-Command $lpassPath) {
         if ($InputObject) {
-            return $InputObject | & $lpassPath @Arguments 2>&1
+            $result = $InputObject | & $lpassPath @Arguments 2>&1
+        } else {
+            $result = & $lpassPath @Arguments 2>&1
         }
-        return & $lpassPath @Arguments 2>&1
+    } else {
+        throw "lpass executable not found or installed."
     }
 
-    throw "lpass executable not found or installed."
+    if ($result -is [System.Management.Automation.ErrorRecord]) {
+        switch -Wildcard ([string] $result) {
+            $lpassMessage.LoggedOut { throw [PasswordRequiredException] $lpassMessage.LoggedOut }
+            $lpassMessage.AccountNotFound { break }
+            $lpassMessage.MultipleMatches { break }
+            # We leave handling exceptions to SecretManagement
+            default {
+                # We do a Write-Error so it's more discoverable to the user
+                # (but it will exist in the inner exception of the throw)
+                Write-Error -ErrorRecord $result
+                throw $result
+            }
+        }
+    }
+
+    # This should be a string or a collection of strings
+    return $result
 }
 
 function Get-Secret
@@ -212,7 +232,7 @@ function Set-Secret
     $res = Invoke-lpass 'show', '--sync=now', '--name', $Name
 
     # We use ToString() here to turn the ErrorRecord into a string if we got an ErrorRecord
-    $SecretExists = switch -Wildcard ("$res") {
+    $SecretExists = switch -Wildcard ($res) {
         # This should never ever happen...
         "" {
             Write-Warning "Querying the secret $Name produced an unexpected result of `$Null"
@@ -220,11 +240,6 @@ function Set-Secret
             break
         }
         $lpassMessage.AccountNotFound {
-            $false
-            break
-        }
-        $lpassMessage.LoggedOut {
-            throw [PasswordRequiredException] $lpassMessage.LoggedOut
             $false
             break
         }
