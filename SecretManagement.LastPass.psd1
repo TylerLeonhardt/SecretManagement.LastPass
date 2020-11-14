@@ -8,6 +8,9 @@
 
 @{
 
+    # Script module or binary module file associated with this manifest.
+    RootModule        = 'SecretManagement.LastPass.psm1'
+
     # Version number of this module.
     ModuleVersion     = '0.2.0'
 
