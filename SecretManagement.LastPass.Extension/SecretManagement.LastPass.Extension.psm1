@@ -41,7 +41,7 @@ $DefaultNoteTypeMap = @{
 $lpassMessage = @{
     AccountNotFound = 'Error: Could not find specified account(s).'
     # Need to use wildcard since the path of lpass could be different
-    LoggedOut = 'Error: Could not find decryption key. Perhaps you need to login with*'
+    LoggedOut = 'Error: Could not find decryption key. Perhaps you need to login with Connect-LastPass'
     MultipleMatches = 'Multiple matches found.'
 }
 
@@ -61,8 +61,13 @@ function Invoke-lpass {
 
         [Parameter(ValueFromPipeline)]
         [object]
-        $InputObject
+        $InputObject,
+        #Only for root module functions
+        [hashtable]$VaultParams
     )
+    # Command from the root module do not contain $AdditionalParameters
+    if ($null -ne $VaultParams){$AdditionalParameters = $VaultParams}
+
     $lpassCommand = if ($null -ne $AdditionalParameters.lpassCommand) { $AdditionalParameters.lpassCommand } else { '' }
     $lpassPath = if ($null -ne $AdditionalParameters.lpassPath) { "`"$($AdditionalParameters.lpassPath)`"" } else { 'lpass' }
 
