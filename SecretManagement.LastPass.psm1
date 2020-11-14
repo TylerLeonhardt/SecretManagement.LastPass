@@ -70,3 +70,19 @@ Function Get-VaultParams($VaultName) {
     return $VaultParams
 
 }
+
+#region VaultNameArgumentCompleter
+$VaultNameArgcompleter = {
+    param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
+    return (Get-SecretVault -Name "*$wordToComplete*") | Select-Object -ExpandProperty Name
+}
+$VaultNameLPArgcompleter = {
+    param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
+    return Get-SecretVault -Name "*$wordToComplete*" | Where-Object ModuleName -eq $ModuleName | Select-Object -ExpandProperty Name
+}
+
+
+Register-ArgumentCompleter -CommandName 'Register-LastPassVault' -ParameterName 'VaultName' -ScriptBlock $VaultNameArgcompleter
+Register-ArgumentCompleter -CommandName 'Unregister-LastPassVault' -ParameterName 'VaultName' -ScriptBlock $VaultNameLPArgcompleter
+#endregion
+
