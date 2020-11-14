@@ -70,7 +70,7 @@ function Invoke-lpass {
     $UseNative = $lpassCommand -eq ''
     $UseCommand = -not $UseNative
 
-    if (($UseNative -and  (Get-Command $lpassPath -EA 0)) -or 
+    if (($UseNative -and -not (Get-Command $lpassPath -EA 0)) -or 
         ($UseCommand -and (& "$lpassCommand" $lpassPath --version ) -notlike 'LastPass CLI*')) {
         throw "lpass executable not found or installed."
     }
@@ -78,18 +78,17 @@ function Invoke-lpass {
     # All other implementations seemed to succeed on 1 or more platform but failed when considering Windows (Wsl) / Linux / Mac together
     if ($InputObject) {
         switch ($true) {
-            {$UseNative -and $IgnoreErrors}  {$result = $InputObject | & $lpassPath @Arguments; break}
-            {$UseNative}                     {$result = $InputObject | & $lpassPath @Arguments 2>&1; break}
-            {$UseCommand -and $IgnoreErrors} {$result = $InputObject | & "$lpassCommand" $lpassPath @Arguments; break}
-            {$UseCommand}                    {$result = $InputObject | & "$lpassCommand" $lpassPath @Arguments 2>&1; break}
+            {$UseNative -and $IgnoreErrors}  {$result = $InputObject | & $lpassPath @Arguments 2>&1; break}
+            {$UseNative}                     {$result = $InputObject | & $lpassPath @Arguments; break}
+            {$UseCommand -and $IgnoreErrors} {$result = $InputObject | & "$lpassCommand" $lpassPath @Arguments 2>&1; break}
+            {$UseCommand}                    {$result = $InputObject | & "$lpassCommand" $lpassPath @Arguments; break}
         }
     } else {
         switch ($true) {
-            { $UseNative -and $IgnoreErrors }   {$result = & $lpassPath @Arguments; break}
-            { $UseNative }                      {$result = & $lpassPath @Arguments 2>&1; break}
-            { $UseCommand -and $IgnoreErrors }  {$result = & "$lpassCommand" $lpassPath @Arguments; break}
-            { $UseCommand }                     {$result = & "$lpassCommand" $lpassPath @Arguments 2>&1; break}
-        
+            { $UseNative -and $IgnoreErrors }   {$result = & $lpassPath @Arguments 2>&1; break}
+            { $UseNative }                      {$result = & $lpassPath @Arguments; break}
+            { $UseCommand -and $IgnoreErrors }  {$result = & "$lpassCommand" $lpassPath @Arguments 2>&1; break}
+            { $UseCommand }                     {$result = & "$lpassCommand" $lpassPath @Arguments; break}
         }
     }
 
