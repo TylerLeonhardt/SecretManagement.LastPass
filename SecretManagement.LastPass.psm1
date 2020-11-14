@@ -56,7 +56,8 @@ function Unregister-LastPassVault {
     Unregister-SecretVault -Name $VaultName 
 }
 
-Function Get-VaultParams($VaultName) {
+Function Get-VaultParams {
+    Param($VaultName)
     if ([String]::IsNullOrEmpty($VaultName)){ 
             $AllVaults = Get-SecretVault | Where-Object ModuleName -eq $ModuleName
             switch ($AllVaults.count) {
