@@ -2,17 +2,20 @@
 # Licensed under the MIT License.
 using namespace Microsoft.PowerShell.SecretManagement
 
-# The capture groups are:
-# 1. The ls short output (just the name & id)
-# 2. The name of the secret
-# 3. The username of the secret
-$lsLongOutput = "\d\d\d\d-\d\d-\d\d \d\d:\d\d ((.*) \[id: \d*\]) \[username: (.*)\]"
+#region constants
 
-    # Custom notes in lpass CLI are a bit of a mess.
-    # For default types
-    # Get operation will return the value
-    # Set operation will only accept the key
-    # This is to convert value obtained from Get when doing a Set. 
+# The capture groups are:
+# 1. The date and time that the secret was stored
+# 2. The ls short output (just the name & id)
+# 3. The name of the secret
+# 4. The username of the secret
+$lsLongOutput = "(\d\d\d\d-\d\d-\d\d \d\d:\d\d)? *((.*) \[id: \d*\]) \[username: (.*)\]"
+
+# Custom notes in lpass CLI are a bit of a mess.
+# For default types
+# Get operation will return the value
+# Set operation will only accept the key
+# This is to convert value obtained from Get when doing a Set. 
 $DefaultNoteTypeMap = @{
     'Address'           = 'address'
     # 'amex' = ''       # Possibly deprecated            
@@ -34,10 +37,20 @@ $DefaultNoteTypeMap = @{
     #'visa' = ''        # Possibly deprecated
     'Wi-Fi Password'    = 'wifi'
 } 
+
+$lpassMessage = @{
+    AccountNotFound = 'Error: Could not find specified account(s).'
+    # Need to use wildcard since the path of lpass could be different
+    LoggedOut = 'Error: Could not find decryption key. Perhaps you need to login with*'
+    MultipleMatches = 'Multiple matches found.'
+}
+
 # These fields need special consideration when working with secrets.
 # Language / NoteType are fields that are part of any custom notes and always appear last (before Notes)
 #Notes field can appear in any secrets and is always the last field. It is also the only multiline field.
 $SpecialKeys = @('Language', 'NoteType', 'Notes')
+
+#endregion
 
 function Invoke-lpass {
     [CmdletBinding()]
@@ -50,24 +63,52 @@ function Invoke-lpass {
         [object]
         $InputObject
     )
+    $lpassCommand = if ($null -ne $AdditionalParameters.lpassCommand) { $AdditionalParameters.lpassCommand } else { '' }
+    $lpassPath = if ($null -ne $AdditionalParameters.lpassPath) { "`"$($AdditionalParameters.lpassPath)`"" } else { 'lpass' }
 
-    $lpassCommand = if ($null -ne $AdditionalParameters.lpassCommand){$AdditionalParameters.lpassCommand} else {''}
-    $lpassPath = if ($null -ne $AdditionalParameters.lpassPath){"`"$($AdditionalParameters.lpassPath)`""} else {'lpass'}
-   
-    
-    if ($lpassCommand -ne '' -and ((& "$lpassCommand" $lpassPath --version ) -like 'LastPass CLI*') ) {
-        if ($InputObject) {
-            return $InputObject | & "$lpassCommand" $lpassPath @Arguments 
-        }
-        return   & "$lpassCommand" $lpassPath @Arguments 
-     } elseif (Get-Command $lpassPath) {
-        if ($InputObject) {
-            return  $InputObject | & $lpassPath @Arguments 
-        }
-        return   & $lpassCommand $lpassPath @Arguments 
+    $IgnoreErrors = $ErrorActionPreference -eq 'SilentlyContinue'
+    $UseNative = $lpassCommand -eq ''
+    $UseCommand = -not $UseNative
+
+    if (($UseNative -and -not (Get-Command $lpassPath -EA 0)) -or 
+        ($UseCommand -and (& "$lpassCommand" $lpassPath --version ) -notlike 'LastPass CLI*')) {
+        throw "lpass executable not found or installed."
     }
 
-    throw "lpass executable not found or installed."
+    # All other implementations seemed to succeed on 1 or more platform but failed when considering Windows (Wsl) / Linux / Mac together
+    if ($InputObject) {
+        switch ($true) {
+            {$UseNative -and $IgnoreErrors}  {$result = $InputObject | & $lpassPath @Arguments 2>&1; break}
+            {$UseNative}                     {$result = $InputObject | & $lpassPath @Arguments; break}
+            {$UseCommand -and $IgnoreErrors} {$result = $InputObject | & "$lpassCommand" $lpassPath @Arguments 2>&1; break}
+            {$UseCommand}                    {$result = $InputObject | & "$lpassCommand" $lpassPath @Arguments; break}
+        }
+    } else {
+        switch ($true) {
+            { $UseNative -and $IgnoreErrors }   {$result = & $lpassPath @Arguments 2>&1; break}
+            { $UseNative }                      {$result = & $lpassPath @Arguments; break}
+            { $UseCommand -and $IgnoreErrors }  {$result = & "$lpassCommand" $lpassPath @Arguments 2>&1; break}
+            { $UseCommand }                     {$result = & "$lpassCommand" $lpassPath @Arguments; break}
+        }
+    }
+
+    if ($result -is [System.Management.Automation.ErrorRecord]) {
+        switch -Wildcard ([string] $result) {
+            $lpassMessage.LoggedOut { throw [PasswordRequiredException] $lpassMessage.LoggedOut }
+            $lpassMessage.AccountNotFound { break }
+            $lpassMessage.MultipleMatches { break }
+            # We leave handling exceptions to SecretManagement
+            default {
+                # We do a Write-Error so it's more discoverable to the user
+                # (but it will exist in the inner exception of the throw)
+                Write-Error -ErrorRecord $result
+                throw $result
+            }
+        }
+    }
+
+    # This should be a string or a collection of strings
+    return $result
 }
 
 function Get-Secret
@@ -84,27 +125,29 @@ function Get-Secret
 
     # TODO error handling
 
+    if ($AdditionalParameters.Verbose) {
+        $VerbosePreference = "Continue"
+    }
+
     if ($Name -match ".* \(id: (\d*)\)") {
         $Name = $Matches[1]
     }
 
-    try {
-        $res = Invoke-lpass 'show', '--name', $Name, '--all'
-        if ($null -eq $res) {
-            # Returning nothing is not allowed. We leave error handling to SecretManagement
-            return #Will produce "Get-Secret : The secret $Name was not found." error.
-        }
-        if ($res[0] -eq 'Multiple matches found.') {
-            Write-Warning "Multiple matches found with the name $Name. `nThe first matching result will be returned."
-            $Id = [regex]::Match($res[1], '\[id: (.*)\]').Groups[1].value
-            $res = Invoke-lpass 'show', '--name', $Id, '--all'
+    $res = Invoke-lpass 'show', '--name', $Name, '--all' -ErrorAction SilentlyContinue
 
-        }
+    # We use ToString() here to turn the ErrorRecord into a string if we got an ErrorRecord
+    if ($null -eq $res -or $res.ToString() -eq $lpassMessage.AccountNotFound) {
+        # Will produce "Get-Secret : The secret $Name was not found." error.
+        return
     }
-    catch {
-        Write-Error $_
-        return 
+
+    if ($res[0] -eq $lpassMessage.MultipleMatches) {
+        Write-Warning "Multiple matches found with the name $Name. `nThe first matching result will be returned."
+        $Id = [regex]::Match($res[1], '\[id: (.*)\]').Groups[1].value
+        $res = Invoke-lpass 'show', '--name', $Id, '--all'
+
     }
+
     #The first line contains the secret name and ID. We do not have any use for it.
     $Raw = ($res | Select-Object -Skip 1) -join "`n"
 
@@ -136,7 +179,7 @@ function Get-Secret
         $Output = Get-ComplexSecret -Fields $MyMatches -Note $Note 
     }
     else {
-        $Output = Get-SimpleSecret -Fields $MyMatches -Note $Note
+        $Output = Get-SimpleSecret -Fields $MyMatches -Note $Note 
     }
     
     return $Output
@@ -155,17 +198,24 @@ function Set-Secret
         [Parameter(ValueFromPipelineByPropertyName)]
         [hashtable] $AdditionalParameters
     )
+    if ($AdditionalParameters.Verbose) {
+        $VerbosePreference = "Continue"
+    }
     $sb = [System.Text.StringBuilder]::new()
     
     
-    if ($Secret -is [string]) {
-        $Secret = @{URL = ' http://sn';Notes = $Secret}
+    if ($Secret -is [string] -or $Secret -is [securestring]) {
+        $Secret = @{
+            URL = ' http://sn'
+            Notes = $Secret
+        }
     } elseif ($Secret -is [pscredential]) {
-        $Secret = @{Username = $Secret.Username; Password = $Secret.GetNetworkCredential().password}
+        $Secret = @{
+            Username = $Secret.Username
+            Password = $Secret.GetNetworkCredential().password
+        }
     }
 
-
-    
     if ($Secret -is [hashtable]){
         if ($Secret.Keys.count -eq 1 -and $null -ne $Secret.Notes) {
             $Secret.URL = 'http://sn'
@@ -174,8 +224,7 @@ function Set-Secret
         $Keys = $Secret.Keys.Where({$_ -notin $SpecialKeys })
         foreach ($k in $Keys) {
             if ($Secret.$k -is [securestring]) {
-                $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Secret.$k)
-                $Secret.$k = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+                $Secret.$k = [System.Net.NetworkCredential]::new("", $Secret.$k).Password
             }
             $sb.AppendLine("$($k): $($Secret.$k)") | Out-Null
         }
@@ -183,42 +232,51 @@ function Set-Secret
         # Notes need to be on a new line
         if ($null -ne $Secret.Notes) {
             if ($Secret.Notes -is [securestring]) {
-                $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Secret.Notes)
-                $Secret.Notes = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+                $Secret.Notes = [System.Net.NetworkCredential]::new("", $Secret.Notes).Password
             }
             $sb.AppendLine("Notes: `n$($Secret.Notes)") | Out-Null
         }
     } 
     
-    try {
-        $res = Invoke-lpass 'show', '--sync=now', '--name', $Name, '2>/dev/null' -ErrorAction Stop 
-        $SecretExists = $null -ne $res 
+    $res = Invoke-lpass 'show', '--sync=now', '--name', $Name -ErrorAction SilentlyContinue
 
-        if ($SecretExists) {
-            Write-Verbose "Editing secret" 
-            $sb.ToString() | Invoke-lpass 'edit', '--non-interactive', $Name
-        } else {
-            Write-Verbose "Adding new secret" 
-            $NoteTypeArgs = @()
-            if ($null -ne $Secret.NoteType) {
-                if ($Secret.NoteType -is [securestring]) { 
-                    $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Secret.NoteType)
-                    $Secret.NoteType = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
-                }
-                $NoteTypeArgs += "--note-type=$($Secret.NoteType)"
-            }
-            $sb.ToString() | Invoke-lpass 'add', $Name, '--non-interactive', $NoteTypeArgs
-            #Explicit sync so calling set again do not duplicate the secret (add --sync=now not fast enough)
-            Invoke-lpass 'sync' 
+    # We use ToString() here to turn the ErrorRecord into a string if we got an ErrorRecord
+    $SecretExists = switch -Wildcard ($res) {
+        # This should never ever happen...
+        "" {
+            Write-Warning "Querying the secret $Name produced an unexpected result of `$Null"
+            $false
+            break
         }
-       
+        $lpassMessage.AccountNotFound {
+            $false
+            break
+        }
+        default {
+            $true
+            break
+        }
     }
-    catch {
-        Write-Error $_
-        return $false
-    }
-    return $true
 
+    if ($SecretExists) {
+        Write-Verbose "Editing secret"
+        $sb.ToString() | Invoke-lpass 'edit', '--non-interactive', $Name
+    } else {
+        Write-Verbose "Adding new secret"
+        $NoteTypeArgs = @()
+        if ($null -ne $Secret.NoteType) {
+            if ($Secret.NoteType -is [securestring]) { 
+                $Secret.NoteType = [System.Net.NetworkCredential]::new("", $Secret.NoteType).Password
+            }
+            $NoteTypeArgs += "--note-type=$($Secret.NoteType)"
+        }
+        $sb.ToString() | Invoke-lpass 'add', $Name, '--non-interactive', $NoteTypeArgs
+    }
+
+    # Explicit sync so calling set again does not duplicate the secret (add --sync=now not fast enough)
+    Invoke-lpass 'sync'
+
+    return $true
 }
 
 function Remove-Secret
@@ -233,6 +291,7 @@ function Remove-Secret
         [hashtable] $AdditionalParameters
     )
 
+    # Grab the id because that's more exact
     if ($Name -match ".* \(id: (\d*)\)") {
         $Name = $Matches[1]
     }
@@ -249,20 +308,23 @@ function Get-SecretInfo
         [string] $VaultName,
         [hashtable] $AdditionalParameters
     )
+    if ($AdditionalParameters.Verbose) {
+        $VerbosePreference = "Continue"
+    }
 
     $Filter = "*$Filter"
     $pattern = [WildcardPattern]::new($Filter)
     Invoke-lpass 'ls','-l' |
         Where-Object { 
             $IsMatch = $_ -match $lsLongOutput 
-            if (-not $IsMatch ) { Write-Debug -Message "No match for: $_ `nThis record will be ignored." }
-            $IsMatch -and $pattern.IsMatch($Matches[2])
+            if (-not $IsMatch ) { Write-Verbose -Message "No match for: $_ `nThis record will be ignored." }
+            $IsMatch -and $pattern.IsMatch($Matches[3])
         } |
         ForEach-Object {
             $type = if ($AdditionalParameters.outputType -eq 'Detailed') {
                 [SecretType]::Hashtable
             }
-            elseif ($Matches[3]) {
+            elseif ($Matches[4]) {
                 [SecretType]::PSCredential
             }
             else {
@@ -270,7 +332,7 @@ function Get-SecretInfo
             }
 
             [SecretInformation]::new(
-                ($Matches[1] -replace '\[(id: \d*?)\]$', '($1)'), 
+                ($Matches[2] -replace '\[(id: \d*?)\]$', '($1)'), 
                 $type,
                 $VaultName)
         }
@@ -285,7 +347,7 @@ function Test-SecretVault
         [Parameter(ValueFromPipelineByPropertyName)]
         [hashtable] $AdditionalParameters
     )
-    $status = Invoke-lpass 'status' -ErrorAction SilentlyContinue
+    $status = Invoke-lpass 'status'
     return ($status -match "Logged in as .*")
 }
 
@@ -319,9 +381,11 @@ function Get-ComplexSecret {
         $Fields,
         $Note
     )
-    $Dupes = ($Fields | Group-Object key).Where( { $_.Count -gt 1 })
     
-    if ($Dupes.Count -gt 0) {
+    $Dupes = ($Fields | Group-Object key).Where( { $_.Count -gt 1 })
+    # Notes is removed from the fields. If present, this mean we have another field using that name under a different case.
+    $DupeNote = ($Fields.Contains('Notes') -and ![String]::IsNullOrEmpty($Note))
+    if ($Dupes.Count -gt 0 -or $DupeNote) {
         Write-Verbose 'Creating case-sensitve hashtable'
         $Output = [hashtable]::new([System.StringComparer]::InvariantCulture)
     } else {
@@ -329,11 +393,7 @@ function Get-ComplexSecret {
     }
     
     if (![String]::IsNullOrEmpty($Note)) { 
-        #The Notes field is ALWAYS the last field.
-        #It is also the only field that can be multiline.
-        #This is why we set the Notes to $Notes and ignore the last field when a Notes field exist.
         $Output.Notes = $Note
-        $Fields = $Fields | Select-Object -SkipLast 1
     }
 
     Foreach ($f in $Fields) {
