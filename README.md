@@ -72,9 +72,9 @@ commands!
 
 The module also have the following vault parameter, that can be provided at registration.
 
-#### lpassCommand
+#### [switch] wsl
 
-This parameter allow the use of a custom command to be called before lpass (such as, but not limited to, wsl)
+Call lpass CLI through Windows Subsystem for Linux (WSL). 
 
 ##### Examples
 
@@ -83,18 +83,18 @@ This parameter allow the use of a custom command to be called before lpass (such
 
 ```pwsh
 # Dedicated function
-Register-LastPassVault -VaultName 'MyVault' -Command wsl
+Register-LastPassVault -VaultName 'MyVault' -wsl
 
 # Using SecretManagement interface
 Register-SecretVault  -VaultName 'MyVault' -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
-    lpassCommand = 'wsl'
+    wsl = $true
 }
 ```
 
 
 #### lpassPath
 
-This parameter will allow to provide a custom lpass path location for the CLI
+Allow to provide a custom lpass path location for the CLI
 
 ##### Examples
 
@@ -125,8 +125,8 @@ Register a SecretVault of type SecretManagement.LastPass
 ##### VaultName
 Name of the vault to be registered. If no name is provided, **SecretManagement.LastPass** will be used.
 
-##### Command
-Command that will call lpass CLI. This is mainly for Windows user, that need to use wsl to use the CLI.
+##### [switch] wsl
+Call lpass CLI through Windows Subsystem for Linux (WSL). 
 
 ##### Path
 Custom path to the lpass CLI
@@ -150,11 +150,11 @@ Name of the vault to connect against.
 ##### Username
 Username to connect with.
 
-##### Trust
-The trust switch will cause subsquent logins to not require multifactor authentication.
+##### [Switch] Trust
+Cause subsquent logins to not require multifactor authentication.
 
-##### StayConnected
-The StayConnected switch will save the Last Pass decryption key on the hard drive so re-entering password once the connection window close is not required anymore. It must be used along with the Force switch parameter. 
+##### [Switch] StayConnected
+Save the Last Pass decryption key on the hard drive so re-entering password once the connection window close is not required anymore. It must be used along with the Force switch parameter. 
 
 ### Disconnect-LastPass
 #### Parameters

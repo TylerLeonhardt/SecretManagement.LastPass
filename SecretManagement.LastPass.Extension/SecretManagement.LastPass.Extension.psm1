@@ -68,15 +68,14 @@ function Invoke-lpass {
      # Command from the root module do not contain $AdditionalParameters
     if ($null -ne $VaultParams) { $AdditionalParameters = $VaultParams }
     
-    $lpassCommand = if ($null -ne $AdditionalParameters.lpassCommand) { $AdditionalParameters.lpassCommand } else { '' }
+    $UseWSL = $AdditionalParameters.wsl -eq $true
     $lpassPath = if ($null -ne $AdditionalParameters.lpassPath) { "`"$($AdditionalParameters.lpassPath)`"" } else { 'lpass' }
 
     $IgnoreErrors = $ErrorActionPreference -eq 'SilentlyContinue'
-    $UseNative = $lpassCommand -eq ''
-    $UseCommand = -not $UseNative
+    $UseNative = -not $UseWSL
 
     if (($UseNative -and -not (Get-Command $lpassPath -EA 0)) -or 
-        ($UseCommand -and (& "$lpassCommand" $lpassPath --version ) -notlike 'LastPass CLI*')) {
+        ($UseWSL -and (& wsl $lpassPath --version ) -notlike 'LastPass CLI*')) {
         throw "lpass executable not found or installed."
     }
 
@@ -85,15 +84,15 @@ function Invoke-lpass {
         switch ($true) {
             {$UseNative -and $IgnoreErrors}  {$result = $InputObject | & $lpassPath @Arguments 2>&1; break}
             {$UseNative}                     {$result = $InputObject | & $lpassPath @Arguments; break}
-            {$UseCommand -and $IgnoreErrors} {$result = $InputObject | & "$lpassCommand" $lpassPath @Arguments 2>&1; break}
-            {$UseCommand}                    {$result = $InputObject | & "$lpassCommand" $lpassPath @Arguments; break}
+            {$UseWSL -and $IgnoreErrors}     {$result = $InputObject | & wsl $lpassPath @Arguments 2>&1; break}
+            {$UseWSL}                        {$result = $InputObject | & wsl $lpassPath @Arguments; break}
         }
     } else {
         switch ($true) {
             { $UseNative -and $IgnoreErrors }   {$result = & $lpassPath @Arguments 2>&1; break}
             { $UseNative }                      {$result = & $lpassPath @Arguments; break}
-            { $UseCommand -and $IgnoreErrors }  {$result = & "$lpassCommand" $lpassPath @Arguments 2>&1; break}
-            { $UseCommand }                     {$result = & "$lpassCommand" $lpassPath @Arguments; break}
+            { $UseWSL -and $IgnoreErrors }      {$result = & wsl $lpassPath @Arguments 2>&1; break}
+            { $UseWSL }                         {$result = & wsl $lpassPath @Arguments; break}
         }
     }
 

@@ -47,7 +47,7 @@ function Register-LastPassVault {
     [CmdletBinding()]
     param (
         [String]$VaultName,
-        [String]$Command,
+        [switch]$wsl,
         [String]$Path
     )
 
@@ -56,8 +56,8 @@ function Register-LastPassVault {
         Name            = if ('' -ne $VaultName) {$VaultName} else {$ModuleName}
         VaultParameters = @{}
     }
-    if ('' -ne $Command) { $Params.VaultParameters.Add('lpassCommand', $Command) }
-    if ('' -ne $Path) { $Params.VaultParameters.Add('lpassPath', $Path) }
+    if ($wsl -eq $true) { $Params.VaultParameters.Add('wsl', $true) }
+    if ($Path -ne '') { $Params.VaultParameters.Add('lpassPath', $Path) }
     if ($VerbosePreference -eq 'Continue') {$Params.add('Verbose',$true)}
 
     Register-SecretVault @Params
