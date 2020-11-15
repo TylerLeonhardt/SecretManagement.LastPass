@@ -115,51 +115,51 @@ Register-SecretVault -VaultName 'MyVault' -ModuleName 'SecretManagement.LastPass
 By default, regular credentials are returned as string (for notes) and PSCredential (for credentials) 
 Setting this parameter to **Detailed** will always return a hashtable. Effectively, this mean that the URL / Notes parameter of the regular credential will be exposed. 
 
-### Additional Functions
+## Additional Functions
 
-#### Register-LastPassVault
+### Register-LastPassVault
 
 Register a SecretVault of type SecretManagement.LastPass
 
-##### Parameters
-###### VaultName
+#### Parameters
+##### VaultName
 Name of the vault to be registered. If no name is provided, **SecretManagement.LastPass** will be used.
 
-###### Command
+##### Command
 Command that will call lpass CLI. This is mainly for Windows user, that need to use wsl to use the CLI.
 
-###### Path
+##### Path
 Custom path to the lpass CLI
 
 
-#### Unregister-LastPassVault
+### Unregister-LastPassVault
 
 Unregister a SecretVault of type SecretManagement.LastPass
 
-##### Parameters
-###### VaultName
+#### Parameters
+##### VaultName
 Name of the vault to be unregistered.
 
-#### Connect-LastPass
+### Connect-LastPass
 Initiate connection to the Last Pass account. 
 
-##### Parameters
-###### VaultName
+#### Parameters
+##### VaultName
 Name of the vault to connect against.
 
-###### Username
+##### Username
 Username to connect with.
 
-###### Trust
+##### Trust
 The trust switch will cause subsquent logins to not require multifactor authentication.
 
-#### Disconnect-LastPass
-##### Parameters
+### Disconnect-LastPass
+#### Parameters
 
-###### VaultName
+##### VaultName
 Name of the vault to perform the disconnect against.
 
-### Extension Limitations
+## Extension Limitations
 
 Some limitations exist on this module, inherent to the CLI they are based on. 
 
