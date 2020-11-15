@@ -65,13 +65,12 @@ function Register-LastPassVault {
 function Unregister-LastPassVault {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory = $true)]
         [String]$VaultName
     )
-    $Params = @{VaultName = if ('' -ne $VaultName) { $VaultName } else { $ModuleName } }
+    $Params = @{Name = if ('' -ne $VaultName) { $VaultName } else { $ModuleName } }
     if ($VerbosePreference -eq 'Continue') {$Params.Add('Verbose',$true)}
     
-    $Vault = Get-SecretVault -Name $params.VaultName -ErrorAction Stop
+    $Vault = Get-SecretVault -Name $params.Name -ErrorAction Stop
     if ($Vault.ModuleName -ne $ModuleName) { Throw $ErrorMessages.Unregister_NotLpass_1 -f $Vault.ModuleName}
     Unregister-SecretVault @Params 
 }
