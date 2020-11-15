@@ -41,7 +41,7 @@ $DefaultNoteTypeMap = @{
 $lpassMessage = @{
     AccountNotFound = 'Error: Could not find specified account(s).'
     # Need to use wildcard since the path of lpass could be different
-    LoggedOut       = 'Error: Could not find decryption key. Perhaps you need to login with Connect-LastPass'
+    LoggedOut = 'Error: Could not find decryption key. Perhaps you need to login with Connect-LastPass'
     MultipleMatches = 'Multiple matches found.'
 }
 
