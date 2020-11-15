@@ -22,7 +22,7 @@ function Disconnect-LastPass {
     param (
         [String]$VaultName
     )
-    $Arguments = [System.Collections.Generic.List[String]]@('logout')
+    $Arguments = [System.Collections.Generic.List[String]]@('logout', '--force')
     $VaultParams = Get-VaultParams -VaultName $VaultName
     Invoke-lpass -Arguments $Arguments -VaultParams $VaultParams
 }
