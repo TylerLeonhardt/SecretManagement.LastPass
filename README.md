@@ -153,6 +153,9 @@ Username to connect with.
 ##### Trust
 The trust switch will cause subsquent logins to not require multifactor authentication.
 
+##### StayConnected
+The StayConnected switch will save the Last Pass decryption key on the hard drive so re-entering password once the connection window close is not required anymore. It must be used along with the Force switch parameter. 
+
 ### Disconnect-LastPass
 #### Parameters
 

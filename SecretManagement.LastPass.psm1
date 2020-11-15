@@ -3,15 +3,27 @@
 using namespace Microsoft.PowerShell.SecretManagement
 
 $ModuleName = 'SecretManagement.LastPass'
+
+$Messages = @{
+    StayConnectedForceSwitchMissing = 'StayConnected is a sensitive operation that save the LastPass decryption key on your hard drive. If you want to proceed, reissue the command specifying the force parameter.'
+}
+
 function Connect-LastPass {
     [CmdletBinding()]
     param (
         [String]$VaultName,
         [String]$User,
-        [Switch]$Trust
+        [Switch]$Trust,
+        [Switch]$StayConnected,
+        [Switch]$Force 
     )
     $Arguments = [System.Collections.Generic.List[String]]@('login')
     if ($trust) { $Arguments.Add('--trust') }
+    if ($StayConnected) { 
+        if (! $Force) { Throw [System.Management.Automation.PSArgumentException] $Messages.StayConnectedForceSwitchMissing }
+        $Arguments.Add('--plaintext-key') 
+        $Arguments.Add('--force')
+    }
     $Arguments.Add($User)
     $VaultParams = Get-VaultParams -VaultName $VaultName
     Invoke-lpass -Arguments $Arguments -VaultParams $VaultParams
