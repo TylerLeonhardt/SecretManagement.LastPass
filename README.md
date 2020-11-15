@@ -82,7 +82,11 @@ This parameter allow the use of a custom command to be called before lpass (such
 * Working with WSL
 
 ```pwsh
-Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
+# Dedicated function
+Register-LastPassVault -VaultName 'MyVault' -Command wsl
+
+# Using SecretManagement interface
+Register-SecretVault  -VaultName 'MyVault' -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
     lpassCommand = 'wsl'
 }
 ```
@@ -97,7 +101,11 @@ This parameter will allow to provide a custom lpass path location for the CLI
 * Specifying a path
 
 ```pwsh
-Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
+# Dedicated function
+Register-LastPassVault -VaultName 'MyVault' -Path "/usr/bin/some path/to/lpass"
+
+# Using SecretManagement interface
+Register-SecretVault -VaultName 'MyVault' -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
     lpassPath = "/usr/bin/some path/to/lpass"
 }
 ```
@@ -107,7 +115,51 @@ Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
 By default, regular credentials are returned as string (for notes) and PSCredential (for credentials) 
 Setting this parameter to **Detailed** will always return a hashtable. Effectively, this mean that the URL / Notes parameter of the regular credential will be exposed. 
 
-### Limitations
+### Additional Functions
+
+#### Register-LastPassVault
+
+Register a SecretVault of type SecretManagement.LastPass
+
+##### Parameters
+###### VaultName
+Name of the vault to be registered. If no name is provided, **SecretManagement.LastPass** will be used.
+
+###### Command
+Command that will call lpass CLI. This is mainly for Windows user, that need to use wsl to use the CLI.
+
+###### Path
+Custom path to the lpass CLI
+
+
+#### Unregister-LastPassVault
+
+Unregister a SecretVault of type SecretManagement.LastPass
+
+##### Parameters
+###### VaultName
+Name of the vault to be unregistered.
+
+#### Connect-LastPass
+Initiate connection to the Last Pass account. 
+
+##### Parameters
+###### VaultName
+Name of the vault to connect against.
+
+###### Username
+Username to connect with.
+
+###### Trust
+The trust switch will cause subsquent logins to not require multifactor authentication.
+
+#### Disconnect-LastPass
+##### Parameters
+
+###### VaultName
+Name of the vault to perform the disconnect against.
+
+### Extension Limitations
 
 Some limitations exist on this module, inherent to the CLI they are based on. 
 

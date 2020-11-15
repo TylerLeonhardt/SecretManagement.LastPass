@@ -30,20 +30,19 @@ function Disconnect-LastPass {
 function Register-LastPassVault {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory = $true)]
         [String]$VaultName,
         [String]$Command,
         [String]$Path
     )
- 
+
     $Params = @{
         ModuleName      = 'SecretManagement.LastPass'
-        Name            = $VaultName
+        Name            = if ('' -ne $VaultName) {$VaultName} else {$ModuleName}
         VaultParameters = @{}
     }
-
     if ('' -ne $Command) { $Params.VaultParameters.Add('lpassCommand', $Command) }
     if ('' -ne $Path) { $Params.VaultParameters.Add('lpassPath', $Path) }
+    if ($VerbosePreference -eq 'Continue') {$Params.add('Verbose',$true)}
 
     Register-SecretVault @Params
 }
@@ -53,7 +52,12 @@ function Unregister-LastPassVault {
         [Parameter(Mandatory = $true)]
         [String]$VaultName
     )
-    Unregister-SecretVault -Name $VaultName 
+    $Params = @{Name = if ('' -ne $VaultName) { $VaultName } else { $ModuleName }}
+    if ($VerbosePreference -eq 'Continue') {$Params.Add('Verbose',$true)}
+    
+    $Vault = Get-SecretVault -Name $params.VaultName -ErrorAction Stop
+    if ($Vault.ModuleName -ne $ModuleName) {Throw "The specified vault is not a $ModuleName vault (VaultType: $($Vault.ModuleName)"}
+    Unregister-SecretVault @Params 
 }
 
 Function Get-VaultParams {
