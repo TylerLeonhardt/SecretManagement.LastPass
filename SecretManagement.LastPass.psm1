@@ -29,7 +29,7 @@ function Connect-LastPass {
         $Arguments.Add('--force')
     }
     $Arguments.Add($User)
-    $VaultParams = Get-VaultParams -VaultName $Vault
+    $VaultParams = Get-VaultParams -Vault $Vault
     Invoke-lpass -Arguments $Arguments -VaultParams $VaultParams
 }
 
@@ -39,7 +39,7 @@ function Disconnect-LastPass {
         [String]$Vault
     )
     $Arguments = [System.Collections.Generic.List[String]]@('logout', '--force')
-    $VaultParams = Get-VaultParams -VaultName $Vault
+    $VaultParams = Get-VaultParams -Vault $Vault
     Invoke-lpass -Arguments $Arguments -VaultParams $VaultParams
 }
 
@@ -78,7 +78,7 @@ function Unregister-LastPassVault {
 function Sync-LastPassVault {
     [CmdletBinding()]
     param ([String]$Vault)
-    $VaultParams = Get-VaultParams -VaultName $Vault
+    $VaultParams = Get-VaultParams -Vault $Vault
     Invoke-lpass -Arguments 'sync' -VaultParams $VaultParams
 }
 Function Get-VaultParams {
