@@ -128,6 +128,9 @@ Name of the vault to be registered. If no name is provided, **SecretManagement.L
 ##### [switch] wsl
 Call lpass CLI through Windows Subsystem for Linux (WSL). 
 
+##### [switch] Detailed
+All records will be returned as hashtable. Notes and regular credentials. In turn, Notes and URL field from the credential will also be returned.
+
 ##### Path
 Custom path to the lpass CLI
 

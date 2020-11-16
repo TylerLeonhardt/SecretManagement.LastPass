@@ -48,6 +48,7 @@ function Register-LastPassVault {
     param (
         [String]$Vault,
         [switch]$wsl,
+        [Switch]$Detailed,
         [String]$Path
     )
 
@@ -58,6 +59,7 @@ function Register-LastPassVault {
     }
     if ($wsl -eq $true) { $Params.VaultParameters.Add('wsl', $true) }
     if ($Path -ne '') { $Params.VaultParameters.Add('lpassPath', $Path) }
+    if ($Detailed -eq $true) { $Params.VaultParameters.Add('outputType','Detailed') }
     if ($VerbosePreference -eq 'Continue') {$Params.add('Verbose',$true)}
 
     Register-SecretVault @Params
