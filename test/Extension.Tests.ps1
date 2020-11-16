@@ -1,6 +1,6 @@
 Describe 'SecretManagement.LastPass tests' {
     BeforeAll {
-        & $PSScriptRoot/reload.ps1
+        . $PSScriptRoot/reload.ps1
         $VaultName = 'LastPass.Tests'
     }
 
@@ -31,7 +31,7 @@ Describe 'SecretManagement.LastPass tests' {
 
     It 'Can store a secure string secret' {
         $secretText = 'This is my securestring secret'
-        Set-Secret -Name $secretName -Vault $VaultName -Secret ($secretText | ConvertTo-SecureString -AsPlainText)
+        Set-Secret -Name $secretName -Vault $VaultName -Secret ($secretText | ConvertTo-SecureString -AsPlainText -Force)
 
         $secretInfo = Get-SecretInfo -Name $secretName -Vault $VaultName
         $secretInfo.Name | Should -BeLike "$secretName (id:*)"
@@ -47,7 +47,7 @@ Describe 'SecretManagement.LastPass tests' {
 
     It 'Can store a PSCredential secret' {
         $secretText = 'This is my pscredential secret'
-        $secret = [PSCredential]::new('myUser', ($secretText | ConvertTo-SecureString -AsPlainText))
+        $secret = [PSCredential]::new('myUser', ($secretText | ConvertTo-SecureString -AsPlainText -Force))
         Set-Secret -Name $secretName -Vault $VaultName -Secret $secret
 
         $secretInfo = Get-SecretInfo -Name $secretName -Vault $VaultName
@@ -86,8 +86,8 @@ Describe 'SecretManagement.LastPass tests' {
     # Skipping because I don't think this extension supports arbitrary hashtables.
     It 'Can store hashtable secret' -Skip {
         $secretText = 'This is my hashtable secret'
-        $cred = [pscredential]::new('myUser', ($secretText | convertto-securestring -asplaintext))
-        $securestring = $secretText | convertto-securestring -asplaintext
+        $cred = [pscredential]::new('myUser', ($secretText | convertto-securestring -AsPlainText -Force))
+        $securestring = $secretText | convertto-securestring -AsPlainText -Force
         $hashtable = @{
             a = 1
             b = $cred

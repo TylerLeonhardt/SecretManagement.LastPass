@@ -75,6 +75,12 @@ function Unregister-LastPassVault {
     Unregister-SecretVault @Params 
 }
 
+function Sync-LastPassVault {
+    [CmdletBinding()]
+    param ([String]$VaultName)
+    $VaultParams = Get-VaultParams -VaultName $VaultName
+    Invoke-lpass -Arguments 'Sync' -VaultParams $VaultParams
+}
 Function Get-VaultParams {
     Param($VaultName)
     if ([String]::IsNullOrEmpty($VaultName)) { 
