@@ -79,7 +79,7 @@ function Sync-LastPassVault {
     [CmdletBinding()]
     param ([String]$Vault)
     $VaultParams = Get-VaultParams -VaultName $Vault
-    Invoke-lpass -Arguments 'Sync','--now' -VaultParams $VaultParams
+    Invoke-lpass -Arguments 'sync' -VaultParams $VaultParams
 }
 Function Get-VaultParams {
     Param($Vault)
