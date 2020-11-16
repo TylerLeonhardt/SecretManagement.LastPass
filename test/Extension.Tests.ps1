@@ -15,6 +15,7 @@ Describe 'SecretManagement.LastPass tests' {
     It 'Can store a string secret which is treated like a securestring' {
         $secretText = 'This is my string secret'
         Set-Secret -Name $secretName -Vault $VaultName -Secret $secretText
+        Sync-LastPassVault -Vault $VaultName
 
         $secretInfo = Get-SecretInfo -Name $secretName -Vault $VaultName
         $secretInfo.Name | Should -BeLike "$secretName (id:*)"
@@ -32,6 +33,7 @@ Describe 'SecretManagement.LastPass tests' {
     It 'Can store a secure string secret' {
         $secretText = 'This is my securestring secret'
         Set-Secret -Name $secretName -Vault $VaultName -Secret ($secretText | ConvertTo-SecureString -AsPlainText -Force)
+        Sync-LastPassVault -Vault $VaultName
 
         $secretInfo = Get-SecretInfo -Name $secretName -Vault $VaultName
         $secretInfo.Name | Should -BeLike "$secretName (id:*)"
@@ -49,6 +51,7 @@ Describe 'SecretManagement.LastPass tests' {
         $secretText = 'This is my pscredential secret'
         $secret = [PSCredential]::new('myUser', ($secretText | ConvertTo-SecureString -AsPlainText -Force))
         Set-Secret -Name $secretName -Vault $VaultName -Secret $secret
+        Sync-LastPassVault -Vault $VaultName
 
         $secretInfo = Get-SecretInfo -Name $secretName -Vault $VaultName
         $secretInfo.Name | Should -BeLike "$secretName (id:*)"
@@ -70,6 +73,7 @@ Describe 'SecretManagement.LastPass tests' {
         $secretText = 'This is my byte array secret'
         $bytes = [System.Text.Encoding]::UTF8.GetBytes($secretText)
         Set-Secret -Name $secretName -Vault $VaultName -Secret $bytes
+        Sync-LastPassVault -Vault $VaultName
 
         $secretInfo = Get-SecretInfo -Name $secretName
         $secretInfo.Name | Should -BeExactly $secretName
@@ -100,6 +104,8 @@ Describe 'SecretManagement.LastPass tests' {
         }
 
         Set-Secret -Name $secretName -Vault $VaultName -Secret $hashtable
+        Sync-LastPassVault -Vault $VaultName
+
         $secretInfo = Get-SecretInfo -Name $secretName
         $secretInfo.Name | Should -BeExactly $secretName
         $secretInfo.Type | Should -BeExactly 'Hashtable'
