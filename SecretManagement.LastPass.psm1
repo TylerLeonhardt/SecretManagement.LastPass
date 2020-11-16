@@ -7,7 +7,7 @@ $ModuleName = 'SecretManagement.LastPass'
 # The last segement (underscore + number (eg: _1)) is to view how many format args are expected.
 $ErrorMessages = @{
     GetVaultParams0                 = "At least 1 vault implementing $ModuleName must be registered."
-    GetVaultParamsMany_1            = "`$VaultName argument must be provided when multiple vault implementing $ModuleName exists: {0}"
+    GetVaultParamsMany_1            = "`$Vault argument must be provided when multiple vault implementing $ModuleName exists: {0}"
     StayConnectedForceSwitchMissing = 'StayConnected is a sensitive operation that save the LastPass decryption key on your hard drive. If you want to proceed, reissue the command specifying the force parameter.'
     Unregister_NotLpass_1           = "The specified vault is not a $ModuleName vault (VaultType: {0}"
 }
@@ -15,7 +15,7 @@ $ErrorMessages = @{
 function Connect-LastPass {
     [CmdletBinding()]
     param (
-        [String]$VaultName,
+        [String]$Vault,
         [String]$User,
         [Switch]$Trust,
         [Switch]$StayConnected,
@@ -29,31 +29,31 @@ function Connect-LastPass {
         $Arguments.Add('--force')
     }
     $Arguments.Add($User)
-    $VaultParams = Get-VaultParams -VaultName $VaultName
+    $VaultParams = Get-VaultParams -VaultName $Vault
     Invoke-lpass -Arguments $Arguments -VaultParams $VaultParams
 }
 
 function Disconnect-LastPass {
     [CmdletBinding()]
     param (
-        [String]$VaultName
+        [String]$Vault
     )
     $Arguments = [System.Collections.Generic.List[String]]@('logout', '--force')
-    $VaultParams = Get-VaultParams -VaultName $VaultName
+    $VaultParams = Get-VaultParams -VaultName $Vault
     Invoke-lpass -Arguments $Arguments -VaultParams $VaultParams
 }
 
 function Register-LastPassVault {
     [CmdletBinding()]
     param (
-        [String]$VaultName,
+        [String]$Vault,
         [switch]$wsl,
         [String]$Path
     )
 
     $Params = @{
         ModuleName      = 'SecretManagement.LastPass'
-        Name            = if ('' -ne $VaultName) {$VaultName} else {$ModuleName}
+        Name            = if ('' -ne $Vault) {$Vault} else {$ModuleName}
         VaultParameters = @{}
     }
     if ($wsl -eq $true) { $Params.VaultParameters.Add('wsl', $true) }
@@ -65,9 +65,9 @@ function Register-LastPassVault {
 function Unregister-LastPassVault {
     [CmdletBinding()]
     param (
-        [String]$VaultName
+        [String]$Vault
     )
-    $Params = @{Name = if ('' -ne $VaultName) { $VaultName } else { $ModuleName } }
+    $Params = @{Name = if ('' -ne $Vault) { $Vault } else { $ModuleName } }
     if ($VerbosePreference -eq 'Continue') {$Params.Add('Verbose',$true)}
     
     $Vault = Get-SecretVault -Name $params.Name -ErrorAction Stop
@@ -77,13 +77,13 @@ function Unregister-LastPassVault {
 
 function Sync-LastPassVault {
     [CmdletBinding()]
-    param ([String]$VaultName)
-    $VaultParams = Get-VaultParams -VaultName $VaultName
+    param ([String]$Vault)
+    $VaultParams = Get-VaultParams -VaultName $Vault
     Invoke-lpass -Arguments 'Sync','--now' -VaultParams $VaultParams
 }
 Function Get-VaultParams {
-    Param($VaultName)
-    if ([String]::IsNullOrEmpty($VaultName)) { 
+    Param($Vault)
+    if ([String]::IsNullOrEmpty($Vault)) { 
         $AllVaults = Get-SecretVault | Where-Object ModuleName -eq $ModuleName
         switch ($AllVaults.count) {
             0 { Throw $ErrorMessages.GetVaultParams0; break }
@@ -92,21 +92,21 @@ Function Get-VaultParams {
         }
     }
 
-    $VaultParams = (Get-SecretVault -Name $VaultName -ErrorAction Stop).VaultParameters
+    $VaultParams = (Get-SecretVault -Name $Vault -ErrorAction Stop).VaultParameters
     return $VaultParams
 
 }
 
 #region VaultNameArgumentCompleter
-$VaultNameArgcompleter = {
+$VaultArgcompleter = {
     param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
     return (Get-SecretVault -Name "*$wordToComplete*") | Select-Object -ExpandProperty Name
 }
-$VaultNameLPArgcompleter = {
+$VaultLPArgcompleter = {
     param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
     return Get-SecretVault -Name "*$wordToComplete*" | Where-Object ModuleName -eq $ModuleName | Select-Object -ExpandProperty Name
 }
 
-Register-ArgumentCompleter -CommandName 'Register-LastPassVault' -ParameterName 'VaultName' -ScriptBlock $VaultNameArgcompleter
-Register-ArgumentCompleter -CommandName 'Unregister-LastPassVault' -ParameterName 'VaultName' -ScriptBlock $VaultNameLPArgcompleter
+Register-ArgumentCompleter -CommandName 'Register-LastPassVault' -ParameterName 'VaultName' -ScriptBlock $VaultArgcompleter
+Register-ArgumentCompleter -CommandName 'Unregister-LastPassVault' -ParameterName 'VaultName' -ScriptBlock $VaultLPArgcompleter
 #endregion

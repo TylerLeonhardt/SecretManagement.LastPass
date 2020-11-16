@@ -83,10 +83,10 @@ Call lpass CLI through Windows Subsystem for Linux (WSL).
 
 ```pwsh
 # Dedicated function
-Register-LastPassVault -VaultName 'MyVault' -wsl
+Register-LastPassVault -Vault 'MyVault' -wsl
 
 # Using SecretManagement interface
-Register-SecretVault  -VaultName 'MyVault' -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
+Register-SecretVault  -Vault 'MyVault' -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
     wsl = $true
 }
 ```
@@ -102,10 +102,10 @@ Allow to provide a custom lpass path location for the CLI
 
 ```pwsh
 # Dedicated function
-Register-LastPassVault -VaultName 'MyVault' -Path "/usr/bin/some path/to/lpass"
+Register-LastPassVault -Vault 'MyVault' -Path "/usr/bin/some path/to/lpass"
 
 # Using SecretManagement interface
-Register-SecretVault -VaultName 'MyVault' -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
+Register-SecretVault -Vault 'MyVault' -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
     lpassPath = "/usr/bin/some path/to/lpass"
 }
 ```
@@ -122,7 +122,7 @@ Setting this parameter to **Detailed** will always return a hashtable. Effective
 Register a SecretVault of type SecretManagement.LastPass
 
 #### Parameters
-##### VaultName
+##### Vault
 Name of the vault to be registered. If no name is provided, **SecretManagement.LastPass** will be used.
 
 ##### [switch] wsl
@@ -137,14 +137,14 @@ Custom path to the lpass CLI
 Unregister a SecretVault of type SecretManagement.LastPass
 
 #### Parameters
-##### VaultName
+##### Vault
 Name of the vault to be unregistered.
 
 ### Connect-LastPass
 Initiate connection to the LastPass account. 
 
 #### Parameters
-##### VaultName
+##### Vault
 Name of the vault to connect against.
 
 ##### Username
@@ -159,7 +159,7 @@ Save the LastPass decryption key on the hard drive so re-entering password once 
 ### Disconnect-LastPass
 #### Parameters
 
-##### VaultName
+##### Vault
 Name of the vault to perform the disconnect against.
 
 
@@ -167,7 +167,7 @@ Name of the vault to perform the disconnect against.
 Forces a synchronization of the local cache with the LastPass servers, and does not exit until the local cache is synchronized or until an error occurs
 #### Parameters
 
-##### VaultName
+##### Vault
 Name of the vault
 
 ## Extension Limitations
