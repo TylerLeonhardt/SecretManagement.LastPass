@@ -73,7 +73,7 @@ function Unregister-LastPassVault {
     if ($VerbosePreference -eq 'Continue') {$Params.Add('Verbose',$true)}
     
     $Vault = Get-SecretVault -Name $params.Name -ErrorAction Stop
-    if ($Vault.ModuleName -ne $ModuleName) { Throw $ErrorMessages.Unregister_NotLpass_1 -f $Vault.ModuleName}
+    if ($Vault.ModuleName -ne $ModuleName) { Throw $ErrorMessages.Unregister_NotLpass_1 -f $Vault.ModuleName }
     Unregister-SecretVault @Params 
 }
 
