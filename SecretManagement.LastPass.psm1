@@ -55,12 +55,14 @@ function Register-LastPassVault {
     $Params = @{
         ModuleName      = 'SecretManagement.LastPass'
         Name            = if ('' -ne $Vault) {$Vault} else {$ModuleName}
-        VaultParameters = @{}
+        Verbose         = $VerbosePreference -eq 'Continue'
+        VaultParameters = @{
+            wsl         = $Wsl.IsPresent
+            outputType  = if ($Detailed) { 'Detailed' } else { 'Default' }
+        }
     }
-    if ($Wsl -eq $true) { $Params.VaultParameters.Add('wsl', $true) }
+
     if ($Path -ne '') { $Params.VaultParameters.Add('lpassPath', $Path) }
-    if ($Detailed -eq $true) { $Params.VaultParameters.Add('outputType','Detailed') }
-    if ($VerbosePreference -eq 'Continue') {$Params.add('Verbose',$true)}
 
     Register-SecretVault @Params
 }
