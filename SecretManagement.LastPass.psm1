@@ -83,7 +83,8 @@ function Sync-LastPassVault {
     $VaultParams = Get-VaultParams -Vault $Vault
     Invoke-lpass -Arguments 'sync' -VaultParams $VaultParams
 }
-Function Get-VaultParams {
+
+function Get-VaultParams {
     Param($Vault)
     if ([String]::IsNullOrEmpty($Vault)) { 
         $AllVaults = Get-SecretVault | Where-Object ModuleName -eq $ModuleName
