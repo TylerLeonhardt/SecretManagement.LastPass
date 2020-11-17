@@ -8,12 +8,14 @@ $ModuleName = 'SecretManagement.LastPass'
 $ErrorMessages = @{
     GetVaultParams0                 = "At least 1 vault implementing $ModuleName must be registered."
     GetVaultParamsMany_1            = "`$Vault argument must be provided when multiple vault implementing $ModuleName exists: {0}"
-    StayConnectedForceSwitchMissing = 'StayConnected is a sensitive operation that save the LastPass decryption key on your hard drive. If you want to proceed, reissue the command specifying the force parameter.'
     Unregister_NotLpass_1           = "The specified vault is not a $ModuleName vault (VaultType: {0}"
 }
 
 function Connect-LastPass {
-    [CmdletBinding()]
+    [CmdletBinding(
+        SupportsShouldProcess,
+        ConfirmImpact = 'High'
+        )]
     param (
         [String]$Vault,
         [String]$User,
@@ -24,9 +26,12 @@ function Connect-LastPass {
     $Arguments = [System.Collections.Generic.List[String]]@('login')
     if ($trust) { $Arguments.Add('--trust') }
     if ($StayConnected) { 
-        if (! $Force) { Throw [System.Management.Automation.PSArgumentException] $ErrorMessages.StayConnectedForceSwitchMissing }
-        $Arguments.Add('--plaintext-key') 
-        $Arguments.Add('--force')
+        if ($Force -and -not $Confirm) { $ConfirmPreference = 'None' }
+        
+        if ($PSCmdlet.ShouldProcess('Connect-LastPass','Saving LastPass account decryption key on disk')) {
+            $Arguments.Add('--plaintext-key') 
+            $Arguments.Add('--force')
+        }
     }
     $Arguments.Add($User)
     $VaultParams = Get-VaultParams -Vault $Vault
