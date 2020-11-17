@@ -87,6 +87,9 @@ function Sync-LastPassVault {
 function Get-VaultParams {
     Param($Vault)
     if ([String]::IsNullOrEmpty($Vault)) { 
+        $DefaultVault = Get-SecretVault -Name $ModuleName -ErrorAction SilentlyContinue
+        if ($null -ne $DefaultVault) { return $DefaultVault.VaultParameters }
+
         $AllVaults = Get-SecretVault | Where-Object ModuleName -eq $ModuleName
         switch ($AllVaults.count) {
             0 { Throw $ErrorMessages.GetVaultParams0; break }
