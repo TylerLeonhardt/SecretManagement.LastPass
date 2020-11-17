@@ -144,11 +144,11 @@ Unregister a SecretVault of type SecretManagement.LastPass
 Name of the vault to be unregistered.
 
 ### Connect-LastPass
-Initiate connection to the LastPass account. 
+Connect the user to LastPass account.
 
 #### Parameters
 ##### Vault
-Name of the vault to connect against.
+Name of the vault to connect to.
 
 ##### Username
 Username to connect with.
@@ -157,9 +157,11 @@ Username to connect with.
 Cause subsquent logins to not require multifactor authentication.
 
 ##### [Switch] StayConnected
-Save the LastPass decryption key on the hard drive so re-entering password once the connection window close is not required anymore. It must be used along with the Force switch parameter. 
+Save the LastPass decryption key on the hard drive so re-entering password once the connection window close is not required anymore. This operation will prompt the user.
 
 ### Disconnect-LastPass
+Disconnect the user to LastPass account.
+
 #### Parameters
 
 ##### Vault
