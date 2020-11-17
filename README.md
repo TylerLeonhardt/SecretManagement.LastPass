@@ -72,7 +72,7 @@ commands!
 
 The module also have the following vault parameter, that can be provided at registration.
 
-#### [switch] wsl
+#### [switch] Wsl
 
 Call lpass CLI through Windows Subsystem for Linux (WSL). 
 
@@ -83,7 +83,7 @@ Call lpass CLI through Windows Subsystem for Linux (WSL).
 
 ```pwsh
 # Dedicated function
-Register-LastPassVault -Vault 'MyVault' -wsl
+Register-LastPassVault -Vault 'MyVault' -Wsl
 
 # Using SecretManagement interface
 Register-SecretVault  -Vault 'MyVault' -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
@@ -125,7 +125,7 @@ Register a SecretVault of type SecretManagement.LastPass
 ##### Vault
 Name of the vault to be registered. If no name is provided, **SecretManagement.LastPass** will be used.
 
-##### [switch] wsl
+##### [switch] Wsl
 Call lpass CLI through Windows Subsystem for Linux (WSL). 
 
 ##### [switch] Detailed
