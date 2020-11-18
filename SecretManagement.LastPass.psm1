@@ -2,6 +2,9 @@
 # Licensed under the MIT License.
 using namespace Microsoft.PowerShell.SecretManagement
 
+# We suppress (redirect) the CLI native error stream by default
+$PSDefaultParameterValues["Invoke-lpass:ErrorActionPreference"] = "SilentlyContinue"
+
 $ModuleName = 'SecretManagement.LastPass'
 
 # The last segement (underscore + number (eg: _1)) is to view how many format args are expected.
