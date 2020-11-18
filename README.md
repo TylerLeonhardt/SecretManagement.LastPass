@@ -72,9 +72,9 @@ commands!
 
 The module also have the following vault parameter, that can be provided at registration.
 
-#### lpassCommand
+#### [switch] Wsl
 
-This parameter allow the use of a custom command to be called before lpass (such as, but not limited to, wsl)
+Call lpass CLI through Windows Subsystem for Linux (WSL). 
 
 ##### Examples
 
@@ -82,22 +82,30 @@ This parameter allow the use of a custom command to be called before lpass (such
 * Working with WSL
 
 ```pwsh
-Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
-    lpassCommand = 'wsl'
+# Dedicated function
+Register-LastPassVault -Vault 'MyVault' -Wsl
+
+# Using SecretManagement interface
+Register-SecretVault  -Vault 'MyVault' -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
+    wsl = $true
 }
 ```
 
 
 #### lpassPath
 
-This parameter will allow to provide a custom lpass path location for the CLI
+Allow to provide a custom lpass path location for the CLI
 
 ##### Examples
 
 * Specifying a path
 
 ```pwsh
-Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
+# Dedicated function
+Register-LastPassVault -Vault 'MyVault' -Path "/usr/bin/some path/to/lpass"
+
+# Using SecretManagement interface
+Register-SecretVault -Vault 'MyVault' -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
     lpassPath = "/usr/bin/some path/to/lpass"
 }
 ```
@@ -107,7 +115,67 @@ Register-SecretVault -ModuleName 'SecretManagement.LastPass' -VaultParameters @{
 By default, regular credentials are returned as string (for notes) and PSCredential (for credentials) 
 Setting this parameter to **Detailed** will always return a hashtable. Effectively, this mean that the URL / Notes parameter of the regular credential will be exposed. 
 
-### Limitations
+## Additional Functions
+
+### Register-LastPassVault
+
+Register a SecretVault of type SecretManagement.LastPass
+
+#### Parameters
+##### Vault
+Name of the vault to be registered. If no name is provided, **SecretManagement.LastPass** will be used.
+
+##### [switch] Wsl
+Call lpass CLI through Windows Subsystem for Linux (WSL). 
+
+##### [switch] Detailed
+All records will be returned as hashtable. Notes and regular credentials. In turn, Notes and URL field from the credential will also be returned.
+
+##### Path
+Custom path to the lpass CLI
+
+
+### Unregister-LastPassVault
+
+Unregister a SecretVault of type SecretManagement.LastPass
+
+#### Parameters
+##### Vault
+Name of the vault to be unregistered.
+
+### Connect-LastPass
+Connect the user to LastPass account.
+
+#### Parameters
+##### Vault
+Name of the vault to connect to.
+
+##### Username
+Username to connect with.
+
+##### [Switch] Trust
+Cause subsquent logins to not require multifactor authentication.
+
+##### [Switch] StayConnected
+Save the LastPass decryption key on the hard drive so re-entering password once the connection window close is not required anymore. This operation will prompt the user.
+
+### Disconnect-LastPass
+Disconnect the user to LastPass account.
+
+#### Parameters
+
+##### Vault
+Name of the vault to perform the disconnect against.
+
+
+### Sync-LastPassVault
+Forces a synchronization of the local cache with the LastPass servers, and does not exit until the local cache is synchronized or until an error occurs
+#### Parameters
+
+##### Vault
+Name of the vault
+
+## Extension Limitations
 
 Some limitations exist on this module, inherent to the CLI they are based on. 
 

@@ -1,3 +1,10 @@
+#Legacy Windows 5.1
+if ($null -eq $IsWindows) {
+    Function ConvertFrom-SecureString([parameter(ValueFromPipeline)]$InputObject, [Switch]$AsPlainText) {
+        return [pscredential]::new('MyUser', $InputObject).GetNetworkCredential().Password 
+    }
+}
+
 if (Get-SecretVault 'LastPass.Tests' -ErrorAction Ignore) {
     Unregister-SecretVault 'LastPass.Tests'
 }
@@ -10,6 +17,9 @@ foreach ($module in $modules) {
     }
 }
 
-Register-SecretVault (Join-Path $PSScriptRoot '..' 'SecretManagement.LastPass.psd1') -Name 'LastPass.Tests'
+$ModulePath = Join-Path "$PSScriptRoot/.."  'SecretManagement.LastPass.psd1'
 
-Import-Module (Join-Path $PSScriptRoot '..' 'SecretManagement.LastPass.psd1') -Force
+if ($IsWindows -in @($true, $null)) {$Params = @{VaultParameters = @{wsl = $true}}}
+Register-SecretVault $ModulePath -Name 'LastPass.Tests' @Params
+Import-Module $ModulePath -Force
+
