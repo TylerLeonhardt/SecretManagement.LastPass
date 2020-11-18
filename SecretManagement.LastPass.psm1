@@ -66,7 +66,7 @@ function Connect-LastPass {
     }
     $Arguments.Add($User)
     $VaultParams = Get-VaultParams -Vault $Vault
-    Invoke-lpass -Arguments $Arguments -VaultParams $VaultParams
+    Invoke-lpass -Arguments $Arguments -VaultParams $VaultParams -NoErrStreamRedirect
 }
 
 <#
