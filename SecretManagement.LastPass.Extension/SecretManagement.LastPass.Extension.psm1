@@ -108,7 +108,19 @@ function Invoke-lpass {
     # If we do redirect on the command themselves, it doesn't work.
     # Doing redirect on the commands wrapped in a function work.
     if ($NoErrStreamRedirect) {
-        $result = Invoke-lpassInternal @Params 
+        # We start with our error wrapped in the redirect.
+        $result = Invoke-lpassInternal @Params 2>&1
+        
+        if ($result -like $lpassMessage.LoggedOut) {
+            # Redo the call without redirecting anything (This is so the password prompt can show)
+            $result2 = Invoke-lpassInternal @Params 
+            $IsShowNull = $null -eq $result2 -and $Arguments.Count -gt 0 -and $Arguments[0] -eq 'show'
+            
+            # If we did a show operation on the second call and got $null, we ignore $result2 so Logged out error is thrown
+            # In any other cases, we actually want to evaluate $result2 output, so we put it in $result
+            if (!$IsShowNull) { $result = $result2} 
+
+        }
     } else {
         $result = Invoke-lpassInternal @Params 2>&1
     }
