@@ -201,6 +201,8 @@ function Get-VaultParams {
         $DefaultVault = Get-SecretVault -Name $ModuleName -ErrorAction SilentlyContinue
         if ($null -ne $DefaultVault) { return $DefaultVault.VaultParameters }
 
+        # If no vault name provided and SecretManagement.LastPass is not a valid vault
+        # We pick the vault automatically if there's only one or throw an error.
         $AllVaults = Get-SecretVault | Where-Object ModuleName -eq $ModuleName
         switch ($AllVaults.count) {
             0 { Throw $ErrorMessages.GetVaultParams0; break }
