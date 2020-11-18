@@ -52,18 +52,35 @@ $SpecialKeys = @('Language', 'NoteType', 'Notes')
 
 #endregion
 
+function Invoke-lpassInternal {
+    [CmdletBinding()]
+    Param(
+        [Parameter(ValueFromPipeline)]
+        [object]$InputObject,
+        [Switch]$UseNative,
+        [String]$lpassPath,
+        [string[]]$Arguments
+    )
+
+    if ($UseNative) {
+        if ($InputObject) { return $InputObject | & $lpassPath @Arguments }
+        return & $lpassPath @Arguments
+    }
+    # WSL
+    if ($InputObject) { return $InputObject | & wsl $lpassPath @Arguments }
+    return & wsl $lpassPath @Arguments
+}
+
 function Invoke-lpass {
     [CmdletBinding()]
     param (
         [Parameter()]
-        [string[]]
-        $Arguments,
-
+        [string[]]$Arguments,
         [Parameter(ValueFromPipeline)]
-        [object]
-        $InputObject,
+        [object]$InputObject,
         #Only for root module functions
-        [hashtable]$VaultParams
+        [hashtable]$VaultParams,
+        [Switch]$NoErrStreamRedirect
     )
      # Command from the root module do not contain $AdditionalParameters
     if ($null -ne $VaultParams) { $AdditionalParameters = $VaultParams }
@@ -71,7 +88,7 @@ function Invoke-lpass {
     $UseWSL = $AdditionalParameters.wsl -eq $true
     $lpassPath = if ($null -ne $AdditionalParameters.lpassPath) { "`"$($AdditionalParameters.lpassPath)`"" } else { 'lpass' }
 
-    $IgnoreErrors = $ErrorActionPreference -eq 'SilentlyContinue'
+    
     $UseNative = -not $UseWSL
 
     if (($UseNative -and -not (Get-Command $lpassPath -EA 0)) -or 
@@ -80,22 +97,22 @@ function Invoke-lpass {
     }
 
     # All other implementations seemed to succeed on 1 or more platform but failed when considering Windows (Wsl) / Linux / Mac together
-    if ($InputObject) {
-        switch ($true) {
-            {$UseNative -and $IgnoreErrors}  {$result = $InputObject | & $lpassPath @Arguments 2>&1; break}
-            {$UseNative}                     {$result = $InputObject | & $lpassPath @Arguments; break}
-            {$UseWSL -and $IgnoreErrors}     {$result = $InputObject | & wsl $lpassPath @Arguments 2>&1; break}
-            {$UseWSL}                        {$result = $InputObject | & wsl $lpassPath @Arguments; break}
-        }
-    } else {
-        switch ($true) {
-            { $UseNative -and $IgnoreErrors }   {$result = & $lpassPath @Arguments 2>&1; break}
-            { $UseNative }                      {$result = & $lpassPath @Arguments; break}
-            { $UseWSL -and $IgnoreErrors }      {$result = & wsl $lpassPath @Arguments 2>&1; break}
-            { $UseWSL }                         {$result = & wsl $lpassPath @Arguments; break}
-        }
+    
+    $Params = @{
+        InputObject = $InputObject
+        UseNative   = $UseNative
+        lpassPath   = $lpassPath
+        Arguments   = $Arguments
     }
 
+    # If we do redirect on the command themselves, it doesn't work.
+    # Doing redirect on the commands wrapped in a function work.
+    if ($NoErrStreamRedirect) {
+        $result = Invoke-lpassInternal @Params 
+    } else {
+        $result = Invoke-lpassInternal @Params 2>&1
+    }
+    
     if ($result -is [System.Management.Automation.ErrorRecord]) {
         switch -Wildcard ([string] $result) {
             $lpassMessage.LoggedOut { throw [PasswordRequiredException] $lpassMessage.LoggedOut }
@@ -137,7 +154,7 @@ function Get-Secret
         $Name = $Matches[1]
     }
 
-    $res = Invoke-lpass 'show', '--name', $Name, '--all' -ErrorAction SilentlyContinue
+    $res = Invoke-lpass 'show', '--name', $Name, '--all' -NoErrStreamRedirect
 
     # We use ToString() here to turn the ErrorRecord into a string if we got an ErrorRecord
     if ($null -eq $res -or $res.ToString() -eq $lpassMessage.AccountNotFound) {
@@ -242,7 +259,7 @@ function Set-Secret
         }
     } 
     
-    $res = Invoke-lpass 'show', '--sync=now', '--name', $Name -ErrorAction SilentlyContinue
+    $res = Invoke-lpass 'show', '--sync=now', '--name', $Name -NoErrStreamRedirect
 
     # We use ToString() here to turn the ErrorRecord into a string if we got an ErrorRecord
     $SecretExists = switch -Wildcard ($res) {
