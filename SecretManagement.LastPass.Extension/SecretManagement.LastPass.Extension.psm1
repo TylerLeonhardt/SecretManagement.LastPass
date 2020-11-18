@@ -52,6 +52,7 @@ $SpecialKeys = @('Language', 'NoteType', 'Notes')
 
 #endregion
 
+# Internal wrapper around the actual call. Reserved for Invoke-lpass. Use Invoke-lpass instead.
 function Invoke-lpassInternal {
     [CmdletBinding()]
     Param(
@@ -71,6 +72,26 @@ function Invoke-lpassInternal {
     return & wsl $lpassPath @Arguments
 }
 
+
+<#
+.SYNOPSIS
+Manage calls to lastpass.
+
+.DESCRIPTION
+Manage calls to lastpass. show & login command are special and requires us to not redirect streams
+to get the prompt. Everything else have its error stream redirect to success (2>&1)
+
+.PARAMETER Arguments
+Arguments to pass to lpass CLI
+
+.PARAMETER InputObject
+Used by some of the non-interactive commands such as lpass add / lpass edit
+
+.PARAMETER VaultParams
+This should never be populated from the extension. It is only for the main module, which have
+no awareness of the vault parameters and need to have them fed to it. If this parameter is provided,
+it overrides $AdditionalParameters
+#>
 function Invoke-lpass {
     [CmdletBinding()]
     param (
@@ -130,7 +151,7 @@ function Invoke-lpass {
 
     if ($result -is [System.Management.Automation.ErrorRecord]) {
         switch -Wildcard ([string] $result) {
-            $lpassMessage.LoggedOut { throw [PasswordRequiredException] $lpassMessage.LoggedOut }
+            $lpassMessage.LoggedOut { throw [PasswordRequiredException] "$($lpassMessage.LoggedOut.TrimEnd("*")) Connect-LastPass" }
             $lpassMessage.AccountNotFound { break }
             $lpassMessage.MultipleMatches { break }
             # We leave handling exceptions to SecretManagement
