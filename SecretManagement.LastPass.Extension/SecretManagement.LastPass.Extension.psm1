@@ -2,9 +2,6 @@
 # Licensed under the MIT License.
 using namespace Microsoft.PowerShell.SecretManagement
 
-# We suppress (redirect) the CLI native error stream by default
-$PSDefaultParameterValues["Invoke-lpass:ErrorActionPreference"] = "SilentlyContinue"
-
 #region constants
 
 # The capture groups are:
@@ -140,7 +137,7 @@ function Get-Secret
         $Name = $Matches[1]
     }
 
-    $res = Invoke-lpass 'show', '--name', $Name, '--all' -ErrorAction Continue
+    $res = Invoke-lpass 'show', '--name', $Name, '--all' -ErrorAction SilentlyContinue
 
     # We use ToString() here to turn the ErrorRecord into a string if we got an ErrorRecord
     if ($null -eq $res -or $res.ToString() -eq $lpassMessage.AccountNotFound) {
@@ -245,7 +242,7 @@ function Set-Secret
         }
     } 
     
-    $res = Invoke-lpass 'show', '--sync=now', '--name', $Name -ErrorAction Continue
+    $res = Invoke-lpass 'show', '--sync=now', '--name', $Name -ErrorAction SilentlyContinue
 
     # We use ToString() here to turn the ErrorRecord into a string if we got an ErrorRecord
     $SecretExists = switch -Wildcard ($res) {
