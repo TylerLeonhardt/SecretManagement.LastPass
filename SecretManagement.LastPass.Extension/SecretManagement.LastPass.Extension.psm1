@@ -79,16 +79,13 @@ function Invoke-lpass {
         [Parameter(ValueFromPipeline)]
         [object]$InputObject,
         #Only for root module functions
-        [hashtable]$VaultParams,
-        [Switch]$NoErrStreamRedirect
+        [hashtable]$VaultParams
     )
      # Command from the root module do not contain $AdditionalParameters
     if ($null -ne $VaultParams) { $AdditionalParameters = $VaultParams }
     
     $UseWSL = $AdditionalParameters.wsl -eq $true
     $lpassPath = if ($null -ne $AdditionalParameters.lpassPath) { "`"$($AdditionalParameters.lpassPath)`"" } else { 'lpass' }
-
-    
     $UseNative = -not $UseWSL
 
     if (($UseNative -and -not (Get-Command $lpassPath -EA 0)) -or 
@@ -96,8 +93,6 @@ function Invoke-lpass {
         throw "lpass executable not found or installed."
     }
 
-    # All other implementations seemed to succeed on 1 or more platform but failed when considering Windows (Wsl) / Linux / Mac together
-    
     $Params = @{
         InputObject = $InputObject
         UseNative   = $UseNative
@@ -107,24 +102,32 @@ function Invoke-lpass {
 
     # If we do redirect on the command themselves, it doesn't work.
     # Doing redirect on the commands wrapped in a function work.
-    if ($NoErrStreamRedirect) {
-        # We start with our error wrapped in the redirect.
-        $result = Invoke-lpassInternal @Params 2>&1
-        
-        if ($result -like $lpassMessage.LoggedOut) {
-            # Redo the call without redirecting anything (This is so the password prompt can show)
-            $result2 = Invoke-lpassInternal @Params 
-            $IsShowNull = $null -eq $result2 -and $Arguments.Count -gt 0 -and $Arguments[0] -eq 'show'
-            
-            # If we did a show operation on the second call and got $null, we ignore $result2 so Logged out error is thrown
-            # In any other cases, we actually want to evaluate $result2 output, so we put it in $result
-            if (!$IsShowNull) { $result = $result2} 
-
-        }
-    } else {
-        $result = Invoke-lpassInternal @Params 2>&1
-    }
     
+    if ($Arguments.Count -gt 0) {
+        switch ($Arguments[0]) {
+            'login' {  
+                # We want the prompt always, so no redirect
+                $result = Invoke-lpassInternal @Params
+            }
+            'show' {
+                # We might want the prompt, but are not sure yet.
+                $result = Invoke-lpassInternal @Params 2>&1
+                # If we get the message stating we might be logged out, we reissue the command without redirect (for Prompt)
+                if ($result -is [System.Management.Automation.ErrorRecord] -and [String]$result -like $lpassMessage.LoggedOut) {
+                    $result2 = Invoke-lpassInternal @Params 2>&1
+                    # If $null, something will have been printed in the console (because we disabled the redirect)
+                    # We therefore want to keep the original $result "Logged out" so it is thrown later on
+                    # If not $null, we want to evaluate $result2
+                    if ($null -ne $result2) {$result = $result2}
+                }
+            }
+            Default {
+                # By default, we always redirect streams
+                $result = Invoke-lpassInternal @Params 2>&1
+            }
+        }
+    }
+
     if ($result -is [System.Management.Automation.ErrorRecord]) {
         switch -Wildcard ([string] $result) {
             $lpassMessage.LoggedOut { throw [PasswordRequiredException] $lpassMessage.LoggedOut }
@@ -166,7 +169,7 @@ function Get-Secret
         $Name = $Matches[1]
     }
 
-    $res = Invoke-lpass 'show', '--name', $Name, '--all' -NoErrStreamRedirect
+    $res = Invoke-lpass 'show', '--name', $Name, '--all'
 
     # We use ToString() here to turn the ErrorRecord into a string if we got an ErrorRecord
     if ($null -eq $res -or $res.ToString() -eq $lpassMessage.AccountNotFound) {
@@ -271,7 +274,7 @@ function Set-Secret
         }
     } 
     
-    $res = Invoke-lpass 'show', '--sync=now', '--name', $Name -NoErrStreamRedirect
+    $res = Invoke-lpass 'show', '--sync=now', '--name', $Name
 
     # We use ToString() here to turn the ErrorRecord into a string if we got an ErrorRecord
     $SecretExists = switch -Wildcard ($res) {
