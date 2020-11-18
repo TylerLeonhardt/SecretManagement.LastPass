@@ -115,9 +115,9 @@ function Invoke-lpass {
                 # If we get the message stating we might be logged out, we reissue the command without redirect (for Prompt)
                 if ($result -is [System.Management.Automation.ErrorRecord] -and [String]$result -like $lpassMessage.LoggedOut) {
                     $result2 = Invoke-lpassInternal @Params
-                    # If $null, something will have been printed in the console (because we disabled the redirect)
+                    # If $result2 -eq $null, something will have been printed in the console (because we disabled the redirect)
                     # We therefore want to keep the original $result "Logged out" so it is thrown later on
-                    # If not $null, we want to evaluate $result2
+                    # If not $null, we want to evaluate $result2 instead and discard $result
                     if ($null -ne $result2) {$result = $result2}
                 }
             }
