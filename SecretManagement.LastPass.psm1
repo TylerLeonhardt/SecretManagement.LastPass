@@ -7,7 +7,7 @@ $ModuleName = 'SecretManagement.LastPass'
 # The last segement (underscore + number (eg: _1)) is to view how many format args are expected.
 $ErrorMessages = @{
     GetVaultParams0                 = "At least 1 vault implementing $ModuleName must be registered."
-    GetVaultParamsMany_1            = "`$Vault argument must be provided when multiple vault implementing $ModuleName exists: {0}"
+    GetVaultParamsMany_1            = "Multiple vault implementing $ModuleName exists: {0}. You must specify a vault name."
     Unregister_NotLpass_1           = "The specified vault is not a $ModuleName vault (VaultType: {0}"
 }
 <#
@@ -124,7 +124,7 @@ Register a vault called MyVault that will be called through wsl and work with th
 function Register-LastPassVault {
     [CmdletBinding()]
     param (
-        [String]$Vault,
+        [String]$Name,
         [switch]$Wsl,
         [Switch]$Detailed,
         [String]$Path
@@ -132,7 +132,7 @@ function Register-LastPassVault {
 
     $Params = @{
         ModuleName      = 'SecretManagement.LastPass'
-        Name            = if ('' -ne $Vault) {$Vault} else {$ModuleName}
+        Name            = if ('' -ne $Name) {$Name} else {$ModuleName}
         Verbose         = $VerbosePreference -eq 'Continue'
         VaultParameters = @{
             wsl         = $Wsl.IsPresent
@@ -163,10 +163,10 @@ Unregister the vault 'MyVault'.
 function Unregister-LastPassVault {
     [CmdletBinding()]
     param (
-        [String]$Vault
+        [String]$Name
     )
     $Params = @{
-        Name = if ('' -ne $Vault) { $Vault } else { $ModuleName }
+        Name = if ('' -ne $Name) { $Name } else { $ModuleName }
         Verbose = $VerbosePreference -eq 'Continue'
     }
     
@@ -226,6 +226,6 @@ $VaultLPArgcompleter = {
     return Get-SecretVault -Name "*$wordToComplete*" | Where-Object ModuleName -eq $ModuleName | Select-Object -ExpandProperty Name
 }
 
-Register-ArgumentCompleter -CommandName 'Register-LastPassVault' -ParameterName 'VaultName' -ScriptBlock $VaultArgcompleter
-Register-ArgumentCompleter -CommandName 'Unregister-LastPassVault' -ParameterName 'VaultName' -ScriptBlock $VaultLPArgcompleter
+Register-ArgumentCompleter -CommandName 'Register-LastPassVault' -ParameterName 'Name' -ScriptBlock $VaultArgcompleter
+Register-ArgumentCompleter -CommandName 'Unregister-LastPassVault' -ParameterName 'Name' -ScriptBlock $VaultLPArgcompleter
 #endregion
