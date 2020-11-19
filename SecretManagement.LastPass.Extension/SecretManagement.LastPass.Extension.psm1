@@ -130,7 +130,7 @@ function Invoke-lpass {
                 # We want the prompt always, so no redirect
                 $result = Invoke-lpassInternal @Params
             }
-            'show' {
+            {$_ -in 'show','ls','rm'} {
                 # We might want the prompt, but are not sure yet.
                 $result = Invoke-lpassInternal @Params 2>&1
                 # If we get the message stating we might be logged out, we reissue the command without redirect (for Prompt)
@@ -139,7 +139,7 @@ function Invoke-lpass {
                     # If $result2 -eq $null, something will have been printed in the console (because we disabled the redirect)
                     # We therefore want to keep the original $result "Logged out" so it is thrown later on
                     # If not $null, we want to evaluate $result2 instead and discard $result
-                    if ($null -ne $result2) {$result = $result2}
+                    if ($null -ne $result2 -or $Arguments[0] -eq 'rm') { $result = $result2 }
                 }
             }
             Default {
