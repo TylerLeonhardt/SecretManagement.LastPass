@@ -317,7 +317,7 @@ function Get-SecretInfo
     }
 
     $Filter = "*$Filter"
-    $pattern = [WildcardPattern]::new($Filter)
+    $pattern = [WildcardPattern]::new($Filter,[System.Management.Automation.WildcardOptions]::IgnoreCase)
     Invoke-lpass 'ls','-l' |
         Where-Object { 
             $IsMatch = $_ -match $lsLongOutput 
