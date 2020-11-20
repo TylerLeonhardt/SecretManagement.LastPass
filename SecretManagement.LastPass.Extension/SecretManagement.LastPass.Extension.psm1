@@ -220,7 +220,7 @@ function Set-Secret
         }
     }
 
-    if ($Secret -is [hashtable]){
+    if ($Secret -is [System.Collections.Specialized.OrderedDictionary] -or $Secret -is [hashtable]) {
         if ($Secret.Keys.count -eq 1 -and $null -ne $Secret.Notes) {
             $Secret.URL = 'http://sn'
         }
@@ -317,7 +317,7 @@ function Get-SecretInfo
     }
 
     $Filter = "*$Filter"
-    $pattern = [WildcardPattern]::new($Filter)
+    $pattern = [WildcardPattern]::new($Filter,[System.Management.Automation.WildcardOptions]::IgnoreCase)
     Invoke-lpass 'ls','-l' |
         Where-Object { 
             $IsMatch = $_ -match $lsLongOutput 
@@ -391,15 +391,11 @@ function Get-ComplexSecret {
     $DupeNote = ($Fields.Contains('Notes') -and ![String]::IsNullOrEmpty($Note))
     if ($Dupes.Count -gt 0 -or $DupeNote) {
         Write-Verbose 'Creating case-sensitve hashtable'
-        $Output = [hashtable]::new([System.StringComparer]::InvariantCulture)
+        $Output = [System.Collections.Specialized.OrderedDictionary]::new([System.StringComparer]::CurrentCultureIgnoreCase)
     } else {
-        $Output = @{}
+        $Output = [Ordered]@{}
     }
     
-    if (![String]::IsNullOrEmpty($Note)) { 
-        $Output.Notes = $Note
-    }
-
     Foreach ($f in $Fields) {
         try {
             $Output.Add($f.key, $f.value) 
@@ -411,5 +407,10 @@ function Get-ComplexSecret {
     if ($null -ne $Output.NoteType -and $DefaultNoteTypeMap.ContainsKey($Output.NoteType)) {
         $Output.NoteType = $DefaultNoteTypeMap.Item($Output.NoteType)
     }
+
+    if (![String]::IsNullOrEmpty($Note)) { 
+        $Output.Notes = $Note
+    }
+
     return $Output
 }
