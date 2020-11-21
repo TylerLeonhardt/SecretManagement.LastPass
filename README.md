@@ -191,7 +191,6 @@ If set, Secret will be returned as is without formatting.
 ###### Notes
 Requires Powershell 6.2 or newer and Microsoft.Powershell.ConsoleGuiTools module to use.
 
-
 ## Extension Limitations
 
 Some limitations exist on this module, inherent to the CLI they are based on. 
