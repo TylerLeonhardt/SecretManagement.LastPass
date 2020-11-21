@@ -175,7 +175,7 @@ Forces a synchronization of the local cache with the LastPass servers, and does 
 ##### Vault
 Name of the vault
 
-### Show-LastPassConsoleGridView
+### Show-LastPassGridView
 Show LastPass GridView secrets then show the selected secret.
 #### Parameters
 

@@ -236,13 +236,13 @@ If set, the secrets GridView will be automatically reloaded after a secret is sh
 If set, Secret will be returned with the title and in a Format-Table -Wrap to show multiline note properly.
 
 .EXAMPLE
-Show-LastPassConsoleGridView -Vault MyVault -KeepOpen 
+Show-LastPassGridView -Vault MyVault -KeepOpen 
 
 .NOTES
 This cmdlet can make use of the improved Out-ConsoleGridView cmdlet if using Powershell 6.2 or newer and  Microsoft.PowerShell.ConsoleGuiTools is installed.
 Otherwise, Out-GridView will be used.
 #>
-function Show-LastPassConsoleGridView {
+function Show-LastPassGridView {
     [CmdletBinding(DefaultParameterSetName='Default')]
     Param(
         [String]$Vault,
