@@ -185,8 +185,8 @@ Name of the vault used for the lookup
 ###### [Switch]KeepOpen
 If set, the secret GridView will be automatically reloaded after a secret is shown
 
-##### [Switch]PassThru
-If set, Secret will be returned as is without formatting.
+##### [Switch]Formatted
+If set, Secret will be returned with the title and in a Format-Table -Wrap to show multiline note properly.
 
 ###### Notes
 This cmdlet can make use of the improved Out-ConsoleGridView cmdlet if using Powershell 6.2 or newer and  Microsoft.PowerShell.ConsoleGuiTools is installed.

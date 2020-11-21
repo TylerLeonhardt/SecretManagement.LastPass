@@ -232,8 +232,8 @@ Pre-filter secrets based on the specified keywords
 .PARAMETER KeepOpen
 If set, the secrets GridView will be automatically reloaded after a secret is shown.
 
-.PARAMETER PassThru
-If set, Secret will be returned as is without formatting.
+.PARAMETER Formatted
+If set, Secret will be returned with the title and in a Format-Table -Wrap to show multiline note properly.
 
 .EXAMPLE
 Show-LastPassConsoleGridView -Vault MyVault -KeepOpen 
@@ -249,8 +249,8 @@ function Show-LastPassConsoleGridView {
         [String]$Filter,
         [Parameter(ParameterSetName = 'KeepOpen')]
         [Switch]$KeepOpen,
-        [Parameter(ParameterSetName = 'PassThru')]
-        [Switch]$PassThru
+        [Parameter(ParameterSetName = 'Formatted')]
+        [Switch]$Formatted
     )
     
     $UseConsoleGridView = $false
@@ -276,24 +276,19 @@ function Show-LastPassConsoleGridView {
         }
         
         if ($null -eq $Result) { break }
-        $Result | ForEach-Object { 
-            $Secret = Microsoft.Powershell.SecretManagement\Get-Secret -Vault $Vault -Name $_.Name -AsPlainText 
-            if ($PassThru) {return $Secret}
-                
-            Write-host $_.Name -ForegroundColor Cyan
-            if ($null -ne $Secret.Notes -and $Secret.Notes.IndexOf("`n") -ne -1) {
-                $Notes = $Secret.Notes
-                $Secret.Remove('Notes')
-                $Secret
-                "Notes:`n$Notes"
-            } else {
-                $Secret
-            }
+            $Secret = Microsoft.Powershell.SecretManagement\Get-Secret -Vault $Vault -Name $Result.Name -AsPlainText
+            
+            # By default, return the secret as is, everything will be fine
+            if (!$Formatted) {return $Secret}
+
+            # Intended for view, not for assignement. Add secret title and expand multiline notes in the console.
+            Write-host $Result.Name -ForegroundColor Cyan
+            $Secret | Format-Table -Wrap
+            
             if ($KeepOpen) { 
                 Pause
                 Clear-Host 
             }
-        }
 
     } while ($Keepopen)
 }
