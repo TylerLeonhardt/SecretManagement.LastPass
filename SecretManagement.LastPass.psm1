@@ -262,6 +262,10 @@ Function Show-LastPassConsoleGridView {
         Write-Debug "Microsoft.Powershell.ConsoleGuiTools could not be loaded.`n$($_ | Out-String)"
     }
 
+    if (!$UseConsoleGridView -and (Get-Command Out-GridView -ErrorAction Stop)){
+        throw "Can't find a grid view cmdlet. Try installing the 'Microsoft.PowerShell.ConsoleGuiTools' module and try again."
+    }
+
     $Vault = (Get-SelectedVault -Vault $Vault).Name
     $LastPassSecretInfoCache = Microsoft.Powershell.SecretManagement\Get-SecretInfo -Vault $Vault -Name "$Filter*"
 
