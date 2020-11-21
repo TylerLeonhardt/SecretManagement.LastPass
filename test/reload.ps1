@@ -19,7 +19,11 @@ foreach ($module in $modules) {
 
 $ModulePath = Join-Path "$PSScriptRoot/.."  'SecretManagement.LastPass.psd1'
 
-if ($IsWindows -in @($true, $null)) {$Params = @{VaultParameters = @{wsl = $true}}}
+$Params = if ($IsLinux -or $IsMacOS) {
+    @{}
+} else {
+    @{ VaultParameters = @{ wsl = $true }}
+}
+
 Register-SecretVault $ModulePath -Name 'LastPass.Tests' @Params
 Import-Module $ModulePath -Force
-
