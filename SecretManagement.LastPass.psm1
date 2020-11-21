@@ -242,7 +242,7 @@ Show-LastPassConsoleGridView -Vault MyVault -KeepOpen
 This cmdlet can make use of the improved Out-ConsoleGridView cmdlet if using Powershell 6.2 or newer and  Microsoft.PowerShell.ConsoleGuiTools is installed.
 Otherwise, Out-GridView will be used.
 #>
-Function Show-LastPassConsoleGridView {
+function Show-LastPassConsoleGridView {
     [CmdletBinding(DefaultParameterSetName='Default')]
     Param(
         [String]$Vault,
