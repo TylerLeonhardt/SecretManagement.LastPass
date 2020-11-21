@@ -189,7 +189,8 @@ If set, the secret GridView will be automatically reloaded after a secret is sho
 If set, Secret will be returned as is without formatting.
 
 ###### Notes
-Requires Powershell 6.2 or newer and Microsoft.Powershell.ConsoleGuiTools module to use.
+This cmdlet can make use of the improved Out-ConsoleGridView cmdlet if using Powershell 6.2 or newer and  Microsoft.PowerShell.ConsoleGuiTools is installed.
+Otherwise, Out-GridView will be used.
 
 ## Extension Limitations
 

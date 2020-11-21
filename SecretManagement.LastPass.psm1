@@ -239,7 +239,8 @@ If set, Secret will be returned as is without formatting.
 Show-LastPassConsoleGridView -Vault MyVault -KeepOpen 
 
 .NOTES
-Requires Powershell 6.2 or newer and Microsoft.PowerShell.ConsoleGuiTools module to use.
+This cmdlet can make use of the improved Out-ConsoleGridView cmdlet if using Powershell 6.2 or newer and  Microsoft.PowerShell.ConsoleGuiTools is installed.
+Otherwise, Out-GridView will be used.
 #>
 Function Show-LastPassConsoleGridView {
     [CmdletBinding(DefaultParameterSetName='Default')]
@@ -252,22 +253,25 @@ Function Show-LastPassConsoleGridView {
         [Switch]$PassThru
     )
     
+    $UseConsoleGridView = $false
     try {
         import-module 'Microsoft.PowerShell.ConsoleGuiTools' -ErrorAction Stop
+        $UseConsoleGridView = $true
     }
     catch {
-        #ConsoleGuiTools version requirement
-        if ($PSVersionTable.PSVersion -lt ([version]6.2)) {
-            Write-Warning "Show-LastPassConsoleGridView is available for Powershell 6.2 and newer."
-        }
-        Write-Warning "Run Install-Module Microsoft.PowerShell.ConsoleGuiTools to install the required dependency"
-        throw $_
+        Write-Debug "Microsoft.Powershell.ConsoleGuiTools could not be loaded.`n$($_ | Out-String)"
     }
+
     $Vault = (Get-SelectedVault -Vault $Vault).Name
     $LastPassSecretInfoCache = Microsoft.Powershell.SecretManagement\Get-SecretInfo -Vault $Vault -Name "$Filter*"
 
     do {
-        $Result = $LastPassSecretInfoCache | Out-ConsoleGridView -Title "LastPass ($Vault)" -OutputMode Single
+        if ($UseConsoleGridView) {
+            $Result = $LastPassSecretInfoCache | Out-ConsoleGridView -Title "LastPass ($Vault)" -OutputMode Single
+        } else {
+            $Result = $LastPassSecretInfoCache | Out-GridView -Title "LastPass ($Vault)" -OutputMode Single
+        }
+        
         if ($null -eq $Result) { break }
         $Result | ForEach-Object { 
             $Secret = Microsoft.Powershell.SecretManagement\Get-Secret -Vault $Vault -Name $_.Name -AsPlainText 
