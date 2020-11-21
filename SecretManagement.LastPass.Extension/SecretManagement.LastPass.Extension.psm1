@@ -273,7 +273,7 @@ function Set-Secret
         }
     }
 
-    if ($Secret -is [System.Collections.Specialized.OrderedDictionary] -or $Secret -is [hashtable]) {
+    if ($Secret -is [System.Collections.IDictionary]) {
         if ($Secret.Keys.count -eq 1 -and $null -ne $Secret.Notes) {
             $Secret.URL = 'http://sn'
         }
