@@ -247,9 +247,7 @@ function Show-LastPassConsoleGridView {
     Param(
         [String]$Vault,
         [String]$Filter,
-        [Parameter(ParameterSetName = 'KeepOpen')]
         [Switch]$KeepOpen,
-        [Parameter(ParameterSetName = 'Formatted')]
         [Switch]$Formatted
     )
     
