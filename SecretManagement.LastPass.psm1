@@ -281,6 +281,15 @@ function Show-LastPassConsoleGridView {
 
             # Intended for view, not for assignement. Add secret title and expand multiline notes in the console.
             Write-host $Result.Name -ForegroundColor Cyan
+            
+            # If outputType is Default, we won't get a hashtable for simple secret but might get a PSCredential
+            if ($Secret -is [pscredential]) {
+                $Secret = @{
+                 UserName = $Secret.UserName
+                 Password = $Secret.GetNetworkCredential().Password
+                }
+            }
+
             $Secret | Format-Table -Wrap
             
             if ($KeepOpen) { 
