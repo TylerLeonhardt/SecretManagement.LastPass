@@ -246,7 +246,7 @@ function Show-LastPassConsoleGridView {
     [CmdletBinding(DefaultParameterSetName='Default')]
     Param(
         [String]$Vault,
-        [String]$Filter = '*',
+        [String]$Filter,
         [Parameter(ParameterSetName = 'KeepOpen')]
         [Switch]$KeepOpen,
         [Parameter(ParameterSetName = 'PassThru')]
