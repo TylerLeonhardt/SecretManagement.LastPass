@@ -175,6 +175,23 @@ Forces a synchronization of the local cache with the LastPass servers, and does 
 ##### Vault
 Name of the vault
 
+### Show-LastPassConsoleGridView
+Show LastPass GridView secrets then show the selected secret.
+#### Parameters
+
+##### Vault
+Name of the vault used for the lookup
+
+###### [Switch]KeepOpen
+If set, the secret GridView will be automatically reloaded after a secret is shown
+
+##### [Switch]PassThru
+If set, Secret will be returned as is without formatting.
+
+###### Notes
+Requires Powershell 6.2 or newer and Microsoft.Powershell.ConsoleGuiTools module to use.
+
+
 ## Extension Limitations
 
 Some limitations exist on this module, inherent to the CLI they are based on. 

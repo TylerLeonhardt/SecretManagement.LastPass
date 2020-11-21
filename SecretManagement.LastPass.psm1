@@ -65,7 +65,7 @@ function Connect-LastPass {
         }
     }
     $Arguments.Add($User)
-    $VaultParams = Get-VaultParams -Vault $Vault
+    $VaultParams = (Get-SelectedVault -Vault $Vault).VaultParameters
     Invoke-lpass -Arguments $Arguments -VaultParams $VaultParams
 }
 
@@ -88,7 +88,7 @@ function Disconnect-LastPass {
         [String]$Vault
     )
     $Arguments = [System.Collections.Generic.List[String]]@('logout', '--force')
-    $VaultParams = Get-VaultParams -Vault $Vault
+    $VaultParams = (Get-SelectedVault -Vault $Vault).VaultParameters
     Invoke-lpass -Arguments $Arguments -VaultParams $VaultParams
 }
 
@@ -191,22 +191,22 @@ Sync-LastPass -Vault MyVault
 function Sync-LastPassVault {
     [CmdletBinding()]
     param ([String]$Vault)
-    $VaultParams = Get-VaultParams -Vault $Vault
+    $VaultParams = (Get-SelectedVault -Vault $Vault).VaultParameters
     Invoke-lpass -Arguments 'sync' -VaultParams $VaultParams
 }
 
-function Get-VaultParams {
+function Get-SelectedVault {
     Param($Vault)
     if ([String]::IsNullOrEmpty($Vault)) { 
         $DefaultVault = Get-SecretVault -Name $ModuleName -ErrorAction SilentlyContinue
-        if ($null -ne $DefaultVault) { return $DefaultVault.VaultParameters }
+        if ($null -ne $DefaultVault) { return $DefaultVault }
 
         # If no vault name provided and SecretManagement.LastPass is not a valid vault
         # We pick the vault automatically if there's only one or throw an error.
         $AllVaults = Get-SecretVault | Where-Object ModuleName -eq $ModuleName
         switch ($AllVaults.count) {
             0 { Throw $ErrorMessages.GetVaultParams0; break }
-            1 { return $AllVaults[0].VaultParameters }
+            1 { return $AllVaults[0] }
             Default { Throw $ErrorMessages.GetVaultParamsMany_1 -f $AllVaults.Name -join ',' }
         }
     }
@@ -214,6 +214,81 @@ function Get-VaultParams {
     $VaultParams = (Get-SecretVault -Name $Vault -ErrorAction Stop).VaultParameters
     return $VaultParams
 
+}
+
+<#
+.SYNOPSIS
+Show LastPass Grid view secrets then show the selected secret.
+
+.DESCRIPTION
+Show LastPass Grid view secrets then show the selected secret. 
+
+.PARAMETER Vault
+Name of the vault used for the lookup
+
+.PARAMETER Filter
+Pre-filter secrets based on the specified keywords
+
+.PARAMETER KeepOpen
+If set, the secrets GridView will be automatically reloaded after a secret is shown.
+
+.PARAMETER PassThru
+If set, Secret will be returned as is without formatting.
+
+.EXAMPLE
+Show-LastPassConsoleGridView -Vault MyVault -KeepOpen 
+
+.NOTES
+Requires Powershell 6.2 or newer and Microsoft.PowerShell.ConsoleGuiTools module to use.
+#>
+Function Show-LastPassConsoleGridView {
+    [CmdletBinding(DefaultParameterSetName='Default')]
+    Param(
+        [String]$Vault,
+        [String]$Filter = '*',
+        [Parameter(ParameterSetName = 'KeepOpen')]
+        [Switch]$KeepOpen,
+        [Parameter(ParameterSetName = 'PassThru')]
+        [Switch]$PassThru
+    )
+    
+    try {
+        import-module 'Microsoft.PowerShell.ConsoleGuiTools' -ErrorAction Stop
+    }
+    catch {
+        #ConsoleGuiTools version requirement
+        if ($PSVersionTable.PSVersion -lt ([version]6.2)) {
+            Write-Warning "Show-LastPassConsoleGridView is available for Powershell 6.2 and newer."
+        }
+        Write-Warning "Run Install-Module Microsoft.PowerShell.ConsoleGuiTools to install the required dependency"
+        throw $_
+    }
+    $Vault = (Get-SelectedVault -Vault $Vault).Name
+    $LastPassSecretInfoCache = Microsoft.Powershell.SecretManagement\Get-SecretInfo -Vault $Vault -Name "$Filter*"
+
+    do {
+        $Result = $LastPassSecretInfoCache | Out-ConsoleGridView -Title "LastPass ($Vault)" -OutputMode Single
+        if ($null -eq $Result) { break }
+        $Result | ForEach-Object { 
+            $Secret = Microsoft.Powershell.SecretManagement\Get-Secret -Vault $Vault -Name $_.Name -AsPlainText 
+            if ($PassThru) {return $Secret}
+                
+            Write-host $_.Name -ForegroundColor Cyan
+            if ($null -ne $Secret.Notes -and $Secret.Notes.IndexOf("`n") -ne -1) {
+                $Notes = $Secret.Notes
+                $Secret.Remove('Notes')
+                $Secret
+                "Notes:`n$Notes"
+            } else {
+                $Secret
+            }
+            if ($KeepOpen) { 
+                Pause
+                Clear-Host 
+            }
+        }
+
+    } while ($Keepopen)
 }
 
 #region VaultNameArgumentCompleter
