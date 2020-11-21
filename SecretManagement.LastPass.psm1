@@ -260,10 +260,9 @@ Function Show-LastPassConsoleGridView {
     }
     catch {
         Write-Debug "Microsoft.Powershell.ConsoleGuiTools could not be loaded.`n$($_ | Out-String)"
-    }
-    
-    if (!$UseConsoleGridView -and $null -eq (Get-Command Out-GridView -ErrorAction SilentlyContinue)) {
-        throw "Can't find a grid view cmdlet. Try installing the 'Microsoft.PowerShell.ConsoleGuiTools' module and try again."
+        if ($null -eq (Get-Command Out-GridView -ErrorAction SilentlyContinue)) {
+            throw "Can't find a grid view cmdlet. Try installing the 'Microsoft.PowerShell.ConsoleGuiTools' module and try again."
+        }
     }
 
     $Vault = (Get-SelectedVault -Vault $Vault).Name
