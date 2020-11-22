@@ -52,16 +52,53 @@ $SpecialKeys = @('Language', 'NoteType', 'Notes')
 
 #endregion
 
+# Internal wrapper around the actual call. Reserved for Invoke-lpass. Use Invoke-lpass instead.
+function Invoke-lpassInternal {
+    [CmdletBinding()]
+    Param(
+        [Parameter(ValueFromPipeline)]
+        [object]$InputObject,
+        [Switch]$UseNative,
+        [String]$lpassPath,
+        [string[]]$Arguments
+    )
+
+    if ($UseNative) {
+        if ($InputObject) { return $InputObject | & $lpassPath @Arguments }
+        return & $lpassPath @Arguments
+    }
+    # WSL
+    if ($InputObject) { return $InputObject | & wsl $lpassPath @Arguments }
+    return & wsl $lpassPath @Arguments
+}
+
+
+<#
+.SYNOPSIS
+Manage calls to lastpass.
+
+.DESCRIPTION
+Manage calls to lastpass. show & login command are special and requires us to not redirect streams
+to get the prompt. Everything else have its error stream redirect to success (2>&1)
+
+.PARAMETER Arguments
+Arguments to pass to lpass CLI
+
+.PARAMETER InputObject
+Used by some of the non-interactive commands such as lpass add / lpass edit
+
+.PARAMETER VaultParams
+This should never be populated from the extension. It is only for the main module, which have
+no awareness of the vault parameters and need to have them fed to it. If this parameter is provided,
+it overrides $AdditionalParameters
+#>
 function Invoke-lpass {
     [CmdletBinding()]
     param (
         [Parameter()]
-        [string[]]
-        $Arguments,
-
+        [string[]]$Arguments,
         [Parameter(ValueFromPipeline)]
-        [object]
-        $InputObject,
+        [object]$InputObject,
         #Only for root module functions
         [hashtable]$VaultParams
     )
@@ -70,8 +107,6 @@ function Invoke-lpass {
     
     $UseWSL = $AdditionalParameters.wsl -eq $true
     $lpassPath = if ($null -ne $AdditionalParameters.lpassPath) { "`"$($AdditionalParameters.lpassPath)`"" } else { 'lpass' }
-
-    $IgnoreErrors = $ErrorActionPreference -eq 'SilentlyContinue'
     $UseNative = -not $UseWSL
 
     if (($UseNative -and -not (Get-Command $lpassPath -EA 0)) -or 
@@ -79,26 +114,44 @@ function Invoke-lpass {
         throw "lpass executable not found or installed."
     }
 
-    # All other implementations seemed to succeed on 1 or more platform but failed when considering Windows (Wsl) / Linux / Mac together
-    if ($InputObject) {
-        switch ($true) {
-            {$UseNative -and $IgnoreErrors}  {$result = $InputObject | & $lpassPath @Arguments 2>&1; break}
-            {$UseNative}                     {$result = $InputObject | & $lpassPath @Arguments; break}
-            {$UseWSL -and $IgnoreErrors}     {$result = $InputObject | & wsl $lpassPath @Arguments 2>&1; break}
-            {$UseWSL}                        {$result = $InputObject | & wsl $lpassPath @Arguments; break}
-        }
-    } else {
-        switch ($true) {
-            { $UseNative -and $IgnoreErrors }   {$result = & $lpassPath @Arguments 2>&1; break}
-            { $UseNative }                      {$result = & $lpassPath @Arguments; break}
-            { $UseWSL -and $IgnoreErrors }      {$result = & wsl $lpassPath @Arguments 2>&1; break}
-            { $UseWSL }                         {$result = & wsl $lpassPath @Arguments; break}
+    $Params = @{
+        InputObject = $InputObject
+        UseNative   = $UseNative
+        lpassPath   = $lpassPath
+        Arguments   = $Arguments
+    }
+
+    # If we do redirect on the command themselves, it doesn't work.
+    # Doing redirect on the commands wrapped in a function work.
+    
+    if ($Arguments.Count -gt 0) {
+        switch ($Arguments[0]) {
+            'login' {  
+                # We want the prompt always, so no redirect
+                $result = Invoke-lpassInternal @Params
+            }
+            {$_ -in 'show','ls','rm'} {
+                # We might want the prompt, but are not sure yet.
+                $result = Invoke-lpassInternal @Params 2>&1
+                # If we get the message stating we might be logged out, we reissue the command without redirect (for Prompt)
+                if ($result -is [System.Management.Automation.ErrorRecord] -and [String]$result -like $lpassMessage.LoggedOut) {
+                    $result2 = Invoke-lpassInternal @Params
+                    # If $result2 -eq $null, something will have been printed in the console (because we disabled the redirect)
+                    # We therefore want to keep the original $result "Logged out" so it is thrown later on
+                    # If not $null, we want to evaluate $result2 instead and discard $result
+                    if ($null -ne $result2 -or $Arguments[0] -eq 'rm') { $result = $result2 }
+                }
+            }
+            Default {
+                # By default, we always redirect streams
+                $result = Invoke-lpassInternal @Params 2>&1
+            }
         }
     }
 
     if ($result -is [System.Management.Automation.ErrorRecord]) {
         switch -Wildcard ([string] $result) {
-            $lpassMessage.LoggedOut { throw [PasswordRequiredException] $lpassMessage.LoggedOut }
+            $lpassMessage.LoggedOut { throw [PasswordRequiredException] "$($lpassMessage.LoggedOut.TrimEnd("*")) Connect-LastPass" }
             $lpassMessage.AccountNotFound { break }
             $lpassMessage.MultipleMatches { break }
             # We leave handling exceptions to SecretManagement
@@ -137,7 +190,7 @@ function Get-Secret
         $Name = $Matches[1]
     }
 
-    $res = Invoke-lpass 'show', '--name', $Name, '--all' -ErrorAction SilentlyContinue
+    $res = Invoke-lpass 'show', '--name', $Name, '--all'
 
     # We use ToString() here to turn the ErrorRecord into a string if we got an ErrorRecord
     if ($null -eq $res -or $res.ToString() -eq $lpassMessage.AccountNotFound) {
@@ -220,7 +273,7 @@ function Set-Secret
         }
     }
 
-    if ($Secret -is [System.Collections.Specialized.OrderedDictionary] -or $Secret -is [hashtable]) {
+    if ($Secret -is [System.Collections.IDictionary]) {
         if ($Secret.Keys.count -eq 1 -and $null -ne $Secret.Notes) {
             $Secret.URL = 'http://sn'
         }
@@ -242,7 +295,7 @@ function Set-Secret
         }
     } 
     
-    $res = Invoke-lpass 'show', '--sync=now', '--name', $Name -ErrorAction SilentlyContinue
+    $res = Invoke-lpass 'show', '--sync=now', '--name', $Name
 
     # We use ToString() here to turn the ErrorRecord into a string if we got an ErrorRecord
     $SecretExists = switch -Wildcard ($res) {
