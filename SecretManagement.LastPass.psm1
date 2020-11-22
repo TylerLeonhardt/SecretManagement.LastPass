@@ -264,7 +264,13 @@ function Show-LastPassGridView {
     }
 
     $Vault = (Get-SelectedVault -Vault $Vault).Name
-    $LastPassSecretInfoCache = Microsoft.Powershell.SecretManagement\Get-SecretInfo -Vault $Vault -Name "$Filter*"
+    $LastPassSecretInfoCache = (Microsoft.Powershell.SecretManagement\Get-SecretInfo -Vault $Vault -Name "$Filter*") | ForEach-Object {
+        $MyMatches = [regex]::Matches($_.Name, '(?<Name>.*)\(id: (?<Id>.*)\)')
+        [PSCustomObject]@{
+            Name = $MyMatches[0].Groups['Name'].Value
+            Id   = $MyMatches[0].Groups['Id'].Value
+        }
+    }
 
     do {
         if ($UseConsoleGridView) {
@@ -274,7 +280,7 @@ function Show-LastPassGridView {
         }
         
         if ($null -eq $Result) { break }
-            $Secret = Microsoft.Powershell.SecretManagement\Get-Secret -Vault $Vault -Name $Result.Name -AsPlainText
+            $Secret = Microsoft.Powershell.SecretManagement\Get-Secret -Vault $Vault -Name "$($Result.Name) (id: $($Result.Id))" -AsPlainText
             
             # By default, return the secret as is, everything will be fine
             if (!$Formatted) {return $Secret}
