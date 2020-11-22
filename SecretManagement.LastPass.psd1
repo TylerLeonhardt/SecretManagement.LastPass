@@ -91,11 +91,27 @@
             ReleaseNotes = @'
 ## 0.2.0
 
+Check out the docs in the README or use `Get-Help <command>`.
+
 Huge thanks to GitHub user @itfranck! (again!)
 
-* Added `lpassCommand` parameter. Docs in README.
+### New vault parameters:
+
+* Wsl
+* OutputType
+
+### New commands:
+
+* Register-LastPassVault
+* Unregister-LastPassVault
+* Connect-LastPass
+* Disconnect-LastPass
+* Sync-LastPassVault
+* Show-LastPassGridView
+
+### Extras:
+
 * Support for complex LastPass types (credit cards, bank accounts, etc)
-* Added `outputType` parameter. Docs in README.
 
 ## 0.1.0
 

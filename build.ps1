@@ -34,6 +34,7 @@ if ($Package) {
 
     @(
         'SecretManagement.LastPass.Extension'
+        'SecretManagement.LastPass.psm1'
         'SecretManagement.LastPass.psd1'
         'LICENSE.txt'
         'README.md'
