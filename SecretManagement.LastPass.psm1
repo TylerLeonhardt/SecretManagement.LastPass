@@ -211,8 +211,8 @@ function Get-SelectedVault {
         }
     }
 
-    $VaultParams = (Get-SecretVault -Name $Vault -ErrorAction Stop).VaultParameters
-    return $VaultParams
+    $SelectedVault = (Get-SecretVault -Name $Vault -ErrorAction Stop)
+    return $SelectedVault
 
 }
 
