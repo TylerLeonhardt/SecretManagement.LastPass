@@ -15,7 +15,16 @@ param (
 
 Push-Location $PSScriptRoot
 
+if (!(Get-Module -ListAvailable Microsoft.PowerShell.SecretManagement -ErrorAction SilentlyContinue)) {
+    Write-Host "SecretManagement module not installed. Installing..."
+    Install-Module Microsoft.PowerShell.SecretManagement -Force -AllowPrerelease
+}
+
 if ($Test) {
+    if (!(Get-Module -ListAvailable Pester -ErrorAction SilentlyContinue)) {
+        Write-Host "Pester module not installed. Installing..."
+        Install-Module Pester -Force
+    }
     Invoke-Pester test
 }
 
