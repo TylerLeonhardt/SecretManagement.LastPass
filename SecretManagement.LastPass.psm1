@@ -264,7 +264,7 @@ function Show-LastPassGridView {
     }
 
     $Vault = (Get-SelectedVault -Vault $Vault).Name
-    $LastPassSecretInfoCache = (Microsoft.Powershell.SecretManagement\Get-SecretInfo -Vault $Vault -Name "$Filter*") | ForEach-Object {
+    $LastPassSecretInfoCache = Microsoft.Powershell.SecretManagement\Get-SecretInfo -Vault $Vault -Name "$Filter*" | ForEach-Object {
         $MyMatches = [regex]::Matches($_.Name, '(?<Group>.*?)/(?<Name>.*)\(id: (?<Id>.*)\)')
         $Group = $MyMatches[0].Groups['Group'].Value.replace('(none)','')
         [PSCustomObject]@{
