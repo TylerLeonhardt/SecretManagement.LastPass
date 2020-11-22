@@ -65,7 +65,7 @@ function Connect-LastPass {
         }
     }
     $Arguments.Add($User)
-    $VaultParams = Get-VaultParams -Vault $Vault
+    $VaultParams = (Get-SelectedVault -Vault $Vault).VaultParameters
     Invoke-lpass -Arguments $Arguments -VaultParams $VaultParams
 }
 
@@ -88,7 +88,7 @@ function Disconnect-LastPass {
         [String]$Vault
     )
     $Arguments = [System.Collections.Generic.List[String]]@('logout', '--force')
-    $VaultParams = Get-VaultParams -Vault $Vault
+    $VaultParams = (Get-SelectedVault -Vault $Vault).VaultParameters
     Invoke-lpass -Arguments $Arguments -VaultParams $VaultParams
 }
 
@@ -191,22 +191,22 @@ Sync-LastPass -Vault MyVault
 function Sync-LastPassVault {
     [CmdletBinding()]
     param ([String]$Vault)
-    $VaultParams = Get-VaultParams -Vault $Vault
+    $VaultParams = (Get-SelectedVault -Vault $Vault).VaultParameters
     Invoke-lpass -Arguments 'sync' -VaultParams $VaultParams
 }
 
-function Get-VaultParams {
+function Get-SelectedVault {
     Param($Vault)
     if ([String]::IsNullOrEmpty($Vault)) { 
         $DefaultVault = Get-SecretVault -Name $ModuleName -ErrorAction SilentlyContinue
-        if ($null -ne $DefaultVault) { return $DefaultVault.VaultParameters }
+        if ($null -ne $DefaultVault) { return $DefaultVault }
 
         # If no vault name provided and SecretManagement.LastPass is not a valid vault
         # We pick the vault automatically if there's only one or throw an error.
         $AllVaults = Get-SecretVault | Where-Object ModuleName -eq $ModuleName
         switch ($AllVaults.count) {
             0 { Throw $ErrorMessages.GetVaultParams0; break }
-            1 { return $AllVaults[0].VaultParameters }
+            1 { return $AllVaults[0] }
             Default { Throw $ErrorMessages.GetVaultParamsMany_1 -f $AllVaults.Name -join ',' }
         }
     }
@@ -214,6 +214,90 @@ function Get-VaultParams {
     $VaultParams = (Get-SecretVault -Name $Vault -ErrorAction Stop).VaultParameters
     return $VaultParams
 
+}
+
+<#
+.SYNOPSIS
+Show LastPass Grid view secrets then show the selected secret.
+
+.DESCRIPTION
+Show LastPass Grid view secrets then show the selected secret. 
+
+.PARAMETER Vault
+Name of the vault used for the lookup
+
+.PARAMETER Filter
+Pre-filter secrets based on the specified keywords
+
+.PARAMETER KeepOpen
+If set, the secrets GridView will be automatically reloaded after a secret is shown.
+
+.PARAMETER Formatted
+If set, Secret will be returned with the title and in a Format-Table -Wrap to show multiline note properly.
+
+.EXAMPLE
+Show-LastPassGridView -Vault MyVault -KeepOpen 
+
+.NOTES
+This cmdlet can make use of the improved Out-ConsoleGridView cmdlet if using Powershell 6.2 or newer and  Microsoft.PowerShell.ConsoleGuiTools is installed.
+Otherwise, Out-GridView will be used.
+#>
+function Show-LastPassGridView {
+    [CmdletBinding(DefaultParameterSetName='Default')]
+    Param(
+        [String]$Vault,
+        [String]$Filter,
+        [Switch]$KeepOpen,
+        [Switch]$Formatted
+    )
+    
+    $UseConsoleGridView = $false
+    try {
+        import-module 'Microsoft.PowerShell.ConsoleGuiTools' -ErrorAction Stop
+        $UseConsoleGridView = $true
+    }
+    catch {
+        Write-Debug "Microsoft.Powershell.ConsoleGuiTools could not be loaded.`n$($_ | Out-String)"
+        if ($null -eq (Get-Command Out-GridView -ErrorAction SilentlyContinue)) {
+            throw "Can't find a grid view cmdlet. Try installing the 'Microsoft.PowerShell.ConsoleGuiTools' module and try again."
+        }
+    }
+
+    $Vault = (Get-SelectedVault -Vault $Vault).Name
+    $LastPassSecretInfoCache = Microsoft.Powershell.SecretManagement\Get-SecretInfo -Vault $Vault -Name "$Filter*"
+
+    do {
+        if ($UseConsoleGridView) {
+            $Result = $LastPassSecretInfoCache | Out-ConsoleGridView -Title "LastPass ($Vault)" -OutputMode Single
+        } else {
+            $Result = $LastPassSecretInfoCache | Out-GridView -Title "LastPass ($Vault)" -OutputMode Single
+        }
+        
+        if ($null -eq $Result) { break }
+            $Secret = Microsoft.Powershell.SecretManagement\Get-Secret -Vault $Vault -Name $Result.Name -AsPlainText
+            
+            # By default, return the secret as is, everything will be fine
+            if (!$Formatted) {return $Secret}
+
+            # Intended for view, not for assignement. Add secret title and expand multiline notes in the console.
+            Write-host $Result.Name -ForegroundColor Cyan
+            
+            # If outputType is Default, we won't get a hashtable for simple secret but might get a PSCredential
+            if ($Secret -is [pscredential]) {
+                $Secret = @{
+                 UserName = $Secret.UserName
+                 Password = $Secret.GetNetworkCredential().Password
+                }
+            }
+
+            $Secret | Format-Table -Wrap
+            
+            if ($KeepOpen) { 
+                Pause
+                Clear-Host 
+            }
+
+    } while ($Keepopen)
 }
 
 #region VaultNameArgumentCompleter
